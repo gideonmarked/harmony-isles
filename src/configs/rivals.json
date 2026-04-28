@@ -1,0 +1,72 @@
+{
+  "riffLord": {
+    "id": "riffLord",
+    "name": "Riff Lord",
+    "role": "guitarist",
+    "design": "guit_01",
+    "rarity": "common",
+    "rank": 1,
+    "color": "0xe85a5a",
+    "stats": { "technicality": 12, "focus": 10, "groove": 14, "confidence": 9, "creativity": 11, "energy": 10 },
+    "performPower": 1.0,
+    "intro": "A garage guitarist with too many knobs to tweak.",
+    "victoryLine": "...alright, you've got the chops. I'll see you at the next show.",
+    "defeatLine": "I get to write the setlist now."
+  },
+  "lowEndDemon": {
+    "id": "lowEndDemon",
+    "name": "Low-End Demon",
+    "role": "bassist",
+    "design": "bass_02",
+    "rarity": "common",
+    "rank": 1,
+    "color": "0x9c5cff",
+    "stats": { "technicality": 10, "focus": 9, "groove": 13, "confidence": 13, "creativity": 9, "energy": 10 },
+    "performPower": 1.0,
+    "intro": "Anchor of every bar band on the floating islands.",
+    "victoryLine": "Pocket's still mine. You're just renting it.",
+    "defeatLine": "Couldn't lock in. Need a session."
+  },
+  "beatSmith": {
+    "id": "beatSmith",
+    "name": "Beat Smith",
+    "role": "drummer",
+    "design": "drum_01",
+    "rarity": "common",
+    "rank": 1,
+    "color": "0xe0a050",
+    "stats": { "technicality": 11, "focus": 12, "groove": 13, "confidence": 11, "creativity": 8, "energy": 13 },
+    "performPower": 1.0,
+    "intro": "Sets the tempo for half the venues you'll ever play.",
+    "victoryLine": "Stay on the click. That's the only rule.",
+    "defeatLine": "You held the pocket better than me."
+  },
+  "synthWizard": {
+    "id": "synthWizard",
+    "name": "Synth Wizard",
+    "role": "keyboardist",
+    "design": "key_03",
+    "rarity": "rare",
+    "rank": 1,
+    "color": "0x6ec1ff",
+    "stats": { "technicality": 13, "focus": 9, "groove": 8, "confidence": 9, "creativity": 14, "energy": 12 },
+    "performPower": 1.0,
+    "intro": "Brought their entire patch library and a polite smile.",
+    "victoryLine": "I'll send you the preset. Eventually.",
+    "defeatLine": "Looks like I need to revisit my chord voicings."
+  },
+  "vocalStorm": {
+    "id": "vocalStorm",
+    "name": "Vocal Storm",
+    "role": "singer",
+    "design": "sing_02",
+    "rarity": "common",
+    "rank": 1,
+    "color": "0x5ce0a0",
+    "stats": { "technicality": 9, "focus": 10, "groove": 9, "confidence": 12, "creativity": 13, "energy": 11 },
+    "performPower": 1.0,
+    "intro": "Voice cuts through any mix. Knows it.",
+    "victoryLine": "Was that supposed to be the chorus?",
+    "defeatLine": "Lost the high note. I'll warm up next time."
+  }
+}

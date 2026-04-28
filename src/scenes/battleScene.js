@@ -122,7 +122,8 @@ export const battleScene = (() => {
     if (!player || !enemy) return false;
     if (enemy.isKO) {
       phase = 'gameOver';
-      setPrompt('Victory! Press Esc to return.');
+      const line = currentRivalDef?.victoryLine ?? '';
+      setPrompt(line ? `${enemy.name}: "${line}" · Press Esc to continue.` : 'Victory! Press Esc to return.');
       shakeCamera(0.65, 480);
       freezeFor(220);
       eventBus.emit('battle.gameOver', { outcome: 'victory' });
@@ -130,7 +131,8 @@ export const battleScene = (() => {
     }
     if (player.isKO) {
       phase = 'gameOver';
-      setPrompt('Defeated. Press Esc to return.');
+      const line = currentRivalDef?.defeatLine ?? '';
+      setPrompt(line ? `Player: "${line}" · Press Esc to continue.` : 'Defeated. Press Esc to return.');
       shakeCamera(0.55, 420);
       freezeFor(220);
       eventBus.emit('battle.gameOver', { outcome: 'defeat' });
@@ -253,6 +255,63 @@ export const battleScene = (() => {
   /** Active song for the in-flight rhythm round. */
   /** @type {any} */
   let currentSong = null;
+
+  /** Active rival template (intro / victory / defeat lines). */
+  /** @type {any} */
+  let currentRivalDef = null;
+
+  function pickRivalDef() {
+    let roster;
+    try {
+      roster = /** @type {Record<string, any>} */ (getConfig('rivals'));
+    } catch (e) {
+      console.error('battleScene: rivals config missing', e);
+      // Fallback so the slice never hard-fails.
+      return {
+        id: 'rival',
+        name: 'Rival',
+        role: 'guitarist',
+        rarity: 'common',
+        rank: 1,
+        color: '0xe85a5a',
+        stats: { technicality: 11, focus: 12, groove: 13, confidence: 11, creativity: 8, energy: 13 },
+        intro: '',
+        victoryLine: 'You took the slot. Take care of it.',
+        defeatLine: 'Better luck on your next gig.',
+      };
+    }
+    const ids = Object.keys(roster);
+    const id = ids[Math.floor(Math.random() * ids.length)];
+    return roster[id];
+  }
+
+  /** §7.2 rarity multipliers. */
+  function rarityMultiplierFor(/** @type {string} */ rarity) {
+    switch (rarity) {
+      case 'rare':
+        return 1.2;
+      case 'epic':
+        return 1.5;
+      case 'legendary':
+        return 2.0;
+      case 'common':
+      default:
+        return 1.0;
+    }
+  }
+
+  /**
+   * @param {Record<string, number>} stats
+   * @param {number} rarityMult
+   */
+  function scaleStats(stats, rarityMult) {
+    /** @type {Record<string, number>} */
+    const out = {};
+    for (const [key, val] of Object.entries(stats)) {
+      out[key] = Math.round(val * rarityMult);
+    }
+    return /** @type {any} */ (out);
+  }
 
   function openSongMenu() {
     if (!player) return;
@@ -496,9 +555,7 @@ export const battleScene = (() => {
     enter(ctx) {
       group = new THREE.Group();
 
-      // Rank 1 stat curves per design doc §9.2:
-      //   Guitarist  Tech 12  Focus 10  Groove 14  Conf  9  Creat 11  Energy 10
-      //   Drummer    Tech 11  Focus 12  Groove 13  Conf 11  Creat  8  Energy 13
+      // Rank 1 stat curves per design doc §9.2 (Guitarist baseline).
       // Confidence Max formula §9.1: round((100 + 15*(rank-1)) * rarityMult
       // + confidence_stat * 2). Rank 1 common: 100 + conf*2.
       player = new Character({
@@ -512,13 +569,21 @@ export const battleScene = (() => {
       player.setBasePosition(-2, 0.8, 0);
       group.add(player.mesh);
 
+      // Pull a random rival template from the roster per design doc
+      // §12 (encounter system) and §7.1 (role designs). The slice ships
+      // 5 templates — one per role — instead of the full 15 designs;
+      // adding more is a content add, not a code change.
+      const rivalDef = pickRivalDef();
+      currentRivalDef = rivalDef;
+      const rarityMult = rarityMultiplierFor(rivalDef.rarity);
       enemy = new Character({
         id: 'e1',
-        name: 'Rival',
+        name: rivalDef.name,
         isPlayer: false,
-        stats: { technicality: 11, focus: 12, groove: 13, confidence: 11, creativity: 8, energy: 13 },
-        hpMax: Math.round(100 + 11 * 2),
-        mpMax: Math.round(50 + 13 * 1.5),
+        stats: scaleStats(rivalDef.stats, rarityMult),
+        hpMax: Math.round((100 + (rivalDef.rank - 1) * 15) * rarityMult + rivalDef.stats.confidence * 2),
+        mpMax: Math.round((50 + (rivalDef.rank - 1) * 5) * rarityMult + rivalDef.stats.energy * 1.5),
+        color: parseInt(rivalDef.color, 16),
       });
       enemy.setBasePosition(2, 0.8, 0);
       group.add(enemy.mesh);
@@ -676,6 +741,8 @@ export const battleScene = (() => {
       group = null;
       player = null;
       enemy = null;
+      currentSong = null;
+      currentRivalDef = null;
       hype = 0;
       phase = 'playerTurn';
       isBandPerformance = false;
