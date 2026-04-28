@@ -13,6 +13,7 @@ import { battleHud } from '../ui/battleHud.js';
 import { battleFx } from '../ui/battleFx.js';
 import { rhythmUI } from '../ui/rhythmUI.js';
 import { itemMenu } from '../ui/itemMenu.js';
+import { songMenu } from '../ui/songMenu.js';
 
 /**
  * Battle scene — the Jam Clash arena.
@@ -31,7 +32,7 @@ import { itemMenu } from '../ui/itemMenu.js';
  * @type {import('../engine/sceneManager.js').Scene}
  */
 export const battleScene = (() => {
-  /** @typedef {'introducing' | 'playerTurn' | 'itemMenu' | 'performing' | 'resolving' | 'enemyTurn' | 'gameOver'} BattlePhase */
+  /** @typedef {'introducing' | 'playerTurn' | 'itemMenu' | 'songMenu' | 'performing' | 'resolving' | 'enemyTurn' | 'gameOver'} BattlePhase */
 
   const HYPE_MAX = 100;
   const PERFORM_BASE_DAMAGE = 20;
@@ -39,7 +40,6 @@ export const battleScene = (() => {
   const PERFORM_CRIT_DAMAGE = 5;
   const PERFORM_BASE_HYPE = 15;
   const PERFORM_ACCURACY_HYPE = 25;
-  const BAND_PERFORMANCE_DAMAGE_MULT = 2.0;
   const DEFEND_DAMAGE_MULT = 0.5;
   const DEFEND_HYPE_GAIN = 6;
   const DEFEND_DELAY_MS = 350;
@@ -222,21 +222,64 @@ export const battleScene = (() => {
     }, DEFEND_DELAY_MS);
   }
 
-  /** @param {boolean} bandPerformance */
-  function startPerform(bandPerformance) {
+  /** Active song for the in-flight rhythm round. */
+  /** @type {any} */
+  let currentSong = null;
+
+  function openSongMenu() {
+    if (!player) return;
+    const songs = /** @type {Record<string, any>} */ (getConfig('songs'));
+    const entries = Object.values(songs)
+      .filter(/** @param {any} s */ (s) => s.type !== 'band_performance')
+      .map(/** @param {any} s */ (s) => ({
+        id: s.id,
+        name: s.name,
+        type: s.type,
+        power: s.power,
+        scalesOff: s.scalesOff,
+        energy: s.energy,
+        affordable: player.mp >= s.energy,
+      }));
+    phase = 'songMenu';
+    setPrompt('Pick a song to perform…');
+    songMenu.show(
+      entries,
+      { mp: player.mp, mpMax: player.mpMax },
+      (songId) => startPerformWithSong(songId, false),
+      () => startPlayerTurn()
+    );
+  }
+
+  /**
+   * @param {string} songId
+   * @param {boolean} bandPerformance
+   */
+  function startPerformWithSong(songId, bandPerformance) {
     if (!player || !enemy) return;
-    const songs = getConfig('songs');
-    const songId = bandPerformance ? 'encoreFinale' : 'encore';
+    const songs = /** @type {Record<string, any>} */ (getConfig('songs'));
     const pattern = songs[songId];
     if (!pattern) {
       console.error(`battleScene: songs.${songId} pattern missing`);
       return;
     }
+    if (!bandPerformance && player.mp < pattern.energy) {
+      // Shouldn't happen via the menu — defensive log only.
+      console.warn(`battleScene: insufficient Energy for ${songId}`);
+      startPlayerTurn();
+      return;
+    }
+
+    if (!bandPerformance) {
+      player.mp = Math.max(0, player.mp - pattern.energy);
+    }
 
     phase = 'performing';
     isBandPerformance = bandPerformance;
+    currentSong = pattern;
     setPrompt(
-      bandPerformance ? 'BAND PERFORMANCE! — D F J K' : 'Hit the lanes — D F J K'
+      bandPerformance
+        ? `BAND PERFORMANCE — ${pattern.name} — D F J K`
+        : `${pattern.name} — D F J K`
     );
 
     if (bandPerformance) {
@@ -244,10 +287,6 @@ export const battleScene = (() => {
     }
 
     rhythmStartMs = performance.now();
-    // Technicality widens the Perfect window per design doc §1.3.
-    // Baseline is stat 5; each point above adds 3 ms, each point
-    // below tightens by 3 ms (clamped to non-negative inside the
-    // engine via Math.max with the good window).
     const tech = player.stats.technicality;
     const perfectWindowBonusMs = (tech - 5) * 3;
     const critWindowBonusMs = Math.max(0, Math.floor((tech - 5) * 1.5));
@@ -261,6 +300,15 @@ export const battleScene = (() => {
     });
   }
 
+  /** @param {boolean} bandPerformance */
+  function startPerform(bandPerformance) {
+    if (bandPerformance) {
+      startPerformWithSong('finalEncore', true);
+    } else {
+      openSongMenu();
+    }
+  }
+
   function resolvePerform() {
     if (!player || !enemy || !rhythm) return;
     const result = rhythm.getResult();
@@ -270,6 +318,7 @@ export const battleScene = (() => {
     rhythm = null;
     rhythmUI.hide();
     isBandPerformance = false;
+    currentSong = null;
 
     phase = 'resolving';
 
@@ -278,29 +327,42 @@ export const battleScene = (() => {
     // documented in src/configs/managerStyles.json.
     const fx = getState().manager.style?.effects ?? {};
 
-    // Creativity scales skill-style perform damage per design doc
-    // §1.3 / §15. Visionary's creativityStatMult (1.15) multiplies the
-    // raw stat before the curve, so the +15% applies cleanly.
-    // Item buffs (Creative Spark, +20% Creativity) layer on top per
-    // §21.4 stacking rules — multiplicative.
-    const effectiveCreativity =
-      player.stats.creativity *
-      (fx.creativityStatMult ?? 1) *
-      (player.statBuffs.creativity ?? 1);
-    const creativityMult = Math.max(0.5, 1 + (effectiveCreativity - 5) * 0.05);
+    // Pick the scaling stat off the active song per §15. "mixed"
+    // averages Groove and Creativity (§16.1 maps Final Encore to
+    // mixed). Visionary's creativityStatMult (1.15) and item buffs
+    // layer multiplicatively per §21.4.
+    const scalesOff = currentSong?.scalesOff ?? 'creativity';
+    const baseStat = (() => {
+      if (scalesOff === 'mixed') {
+        return (player.stats.groove + player.stats.creativity) / 2;
+      }
+      return player.stats[scalesOff] ?? player.stats.creativity;
+    })();
+    const styleStatMult = scalesOff === 'creativity' ? (fx.creativityStatMult ?? 1) : 1;
+    const buffMult = player.statBuffs[scalesOff] ?? 1;
+    const effectiveStat = baseStat * styleStatMult * buffMult;
+    const statCurveMult = Math.max(0.5, 1 + (effectiveStat - 5) * 0.05);
+
+    // Song.power is the §16.1 multiplier (1.0 Neon Riff … 2.4 Final
+    // Encore). Replaces the old hardcoded BP multiplier — the BP
+    // boost lives entirely in the Final Encore song's power value
+    // plus Showrunner's bonus.
+    const songPower = currentSong?.power ?? 1.0;
 
     let baseDamage =
       (PERFORM_BASE_DAMAGE +
         result.accuracy * PERFORM_ACCURACY_DAMAGE +
         result.criticals * PERFORM_CRIT_DAMAGE) *
-      creativityMult;
+      statCurveMult *
+      songPower;
 
     // Coach: -10% damage across the board.
     baseDamage *= fx.damageMult ?? 1;
 
-    // Showrunner: +15% damage on Band Performances.
-    const bpMult = BAND_PERFORMANCE_DAMAGE_MULT * (fx.bandPerformanceDamageMult ?? 1);
-    const damage = Math.round(bp ? baseDamage * bpMult : baseDamage);
+    // Showrunner: +15% damage when the active song is a Band Performance.
+    if (bp) baseDamage *= fx.bandPerformanceDamageMult ?? 1;
+
+    const damage = Math.round(baseDamage);
     player.playAttack();
     enemy.takeDamage(damage);
     emitHp('enemy');
@@ -509,6 +571,10 @@ export const battleScene = (() => {
               itemMenu.handleKey(payload.code);
               return;
             }
+            if (phase === 'songMenu') {
+              songMenu.handleKey(payload.code);
+              return;
+            }
             if (phase === 'performing' && rhythm && LANE_KEYS.includes(payload.code)) {
               rhythm.onKeyDown(payload.code);
             }
@@ -551,6 +617,7 @@ export const battleScene = (() => {
       battleHud.hide();
       battleFx.hide();
       itemMenu.hide();
+      songMenu.hide();
       resetTimeFx();
       player?.clearBuffs();
       enemy?.clearBuffs();
