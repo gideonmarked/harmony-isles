@@ -1,0 +1,52 @@
+{
+  "energyDrink": {
+    "id": "energyDrink",
+    "name": "Energy Drink",
+    "buy": 250,
+    "sell": 75,
+    "summary": "Restore 20% of max Energy.",
+    "duration": "instant",
+    "stacks": false,
+    "effect": { "kind": "heal", "stat": "energy", "amountPctOfMax": 0.2 }
+  },
+  "focusPill": {
+    "id": "focusPill",
+    "name": "Focus Pill",
+    "buy": 300,
+    "sell": 90,
+    "summary": "+20% Focus until end of battle.",
+    "duration": "battle",
+    "stacks": false,
+    "effect": { "kind": "buff", "stat": "focus", "mult": 1.2 }
+  },
+  "grooveBooster": {
+    "id": "grooveBooster",
+    "name": "Groove Booster",
+    "buy": 400,
+    "sell": 120,
+    "summary": "+20% Groove until end of battle.",
+    "duration": "battle",
+    "stacks": false,
+    "effect": { "kind": "buff", "stat": "groove", "mult": 1.2 }
+  },
+  "confidenceBadge": {
+    "id": "confidenceBadge",
+    "name": "Confidence Badge",
+    "buy": 600,
+    "sell": 180,
+    "summary": "Restore 100% Confidence to one character.",
+    "duration": "instant",
+    "stacks": true,
+    "effect": { "kind": "heal", "stat": "confidence", "amountPctOfMax": 1.0 }
+  },
+  "creativeSpark": {
+    "id": "creativeSpark",
+    "name": "Creative Spark",
+    "buy": 500,
+    "sell": 150,
+    "summary": "+20% Creativity until end of battle.",
+    "duration": "battle",
+    "stacks": false,
+    "effect": { "kind": "buff", "stat": "creativity", "mult": 1.2 }
+  }
+}

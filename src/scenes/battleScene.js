@@ -5,13 +5,14 @@ import * as THREE from 'three';
 import { eventBus } from '../engine/eventBus.js';
 import { sceneManager } from '../engine/sceneManager.js';
 import { getConfig } from '../engine/configService.js';
-import { getState } from '../engine/gameState.js';
+import { getState, dispatch } from '../engine/gameState.js';
 import { startRhythm, LANE_KEYS } from '../engine/rhythmEngine.js';
 import { freezeFor, shakeCamera, resetTimeFx } from '../engine/timeFx.js';
 import { Character } from '../entities/character.js';
 import { battleHud } from '../ui/battleHud.js';
 import { battleFx } from '../ui/battleFx.js';
 import { rhythmUI } from '../ui/rhythmUI.js';
+import { itemMenu } from '../ui/itemMenu.js';
 
 /**
  * Battle scene — the Jam Clash arena.
@@ -30,7 +31,7 @@ import { rhythmUI } from '../ui/rhythmUI.js';
  * @type {import('../engine/sceneManager.js').Scene}
  */
 export const battleScene = (() => {
-  /** @typedef {'introducing' | 'playerTurn' | 'performing' | 'resolving' | 'enemyTurn' | 'gameOver'} BattlePhase */
+  /** @typedef {'introducing' | 'playerTurn' | 'itemMenu' | 'performing' | 'resolving' | 'enemyTurn' | 'gameOver'} BattlePhase */
 
   const HYPE_MAX = 100;
   const PERFORM_BASE_DAMAGE = 20;
@@ -113,11 +114,97 @@ export const battleScene = (() => {
   function startPlayerTurn() {
     phase = 'playerTurn';
     if (player) player.isDefending = false;
+    const itemHint = inventoryHasAny() ? ' · I = Items' : '';
     if (hype >= HYPE_MAX) {
-      setPrompt('Your turn — Z = Perform · X = BAND PERFORMANCE! · C = Defend');
+      setPrompt(`Your turn — Z = Perform · X = BAND PERFORMANCE! · C = Defend${itemHint}`);
     } else {
-      setPrompt('Your turn — Z = Perform · C = Defend');
+      setPrompt(`Your turn — Z = Perform · C = Defend${itemHint}`);
     }
+  }
+
+  function inventoryHasAny() {
+    const inv = getState().inventory;
+    return Object.values(inv).some((c) => c > 0);
+  }
+
+  function openItemMenu() {
+    if (!player) return;
+    const inv = getState().inventory;
+    let items;
+    try {
+      items = /** @type {Record<string, any>} */ (getConfig('items'));
+    } catch (e) {
+      console.error('battleScene: items config missing', e);
+      return;
+    }
+    const entries = Object.entries(inv)
+      .filter(([, count]) => count > 0)
+      .map(([id, count]) => {
+        const def = items[id];
+        return {
+          id,
+          name: def?.name ?? id,
+          summary: def?.summary ?? '',
+          count,
+        };
+      });
+    if (entries.length === 0) return;
+
+    phase = 'itemMenu';
+    setPrompt('Choose an item to use…');
+    itemMenu.show(
+      entries,
+      (itemId) => useItem(itemId),
+      () => {
+        // Cancelled — return to the action menu.
+        startPlayerTurn();
+      }
+    );
+  }
+
+  /** @param {string} itemId */
+  function useItem(itemId) {
+    if (!player) return;
+    let items;
+    try {
+      items = /** @type {Record<string, any>} */ (getConfig('items'));
+    } catch {
+      return;
+    }
+    const def = items[itemId];
+    if (!def) return;
+
+    dispatch({ type: 'CONSUME_ITEM', itemId });
+
+    let resultText = '';
+    const eff = def.effect;
+    if (eff?.kind === 'heal' && eff.stat === 'confidence') {
+      const amount = Math.round(player.hpMax * (eff.amountPctOfMax ?? 0));
+      const { before, after } = player.heal(amount);
+      emitHp('player');
+      resultText = `${player.name} restores ${after - before} Confidence.`;
+    } else if (eff?.kind === 'heal' && eff.stat === 'energy') {
+      // Energy/MP isn't gameplay-active in the slice; the buff is
+      // applied to data faithfully and noted for the player.
+      const amount = Math.round(player.mpMax * (eff.amountPctOfMax ?? 0));
+      player.mp = Math.min(player.mpMax, player.mp + amount);
+      resultText = `${player.name} regains ${amount} Energy.`;
+    } else if (eff?.kind === 'buff') {
+      const stat = eff.stat;
+      const mult = eff.mult ?? 1;
+      player.statBuffs[stat] = (player.statBuffs[stat] ?? 1) * mult;
+      const pct = Math.round((mult - 1) * 100);
+      resultText = `${player.name}'s ${stat} ${pct >= 0 ? '+' : ''}${pct}% for the rest of battle.`;
+    } else {
+      resultText = `${def.name} used.`;
+    }
+
+    phase = 'resolving';
+    setPrompt(resultText);
+    delay(() => {
+      if (checkVictory()) return;
+      startEnemyTurn();
+    }, ENEMY_TURN_DELAY_MS - 200);
   }
 
   function performDefend() {
@@ -194,8 +281,12 @@ export const battleScene = (() => {
     // Creativity scales skill-style perform damage per design doc
     // §1.3 / §15. Visionary's creativityStatMult (1.15) multiplies the
     // raw stat before the curve, so the +15% applies cleanly.
+    // Item buffs (Creative Spark, +20% Creativity) layer on top per
+    // §21.4 stacking rules — multiplicative.
     const effectiveCreativity =
-      player.stats.creativity * (fx.creativityStatMult ?? 1);
+      player.stats.creativity *
+      (fx.creativityStatMult ?? 1) *
+      (player.statBuffs.creativity ?? 1);
     const creativityMult = Math.max(0.5, 1 + (effectiveCreativity - 5) * 0.05);
 
     let baseDamage =
@@ -410,6 +501,14 @@ export const battleScene = (() => {
               performDefend();
               return;
             }
+            if (phase === 'playerTurn' && payload.code === 'KeyI') {
+              openItemMenu();
+              return;
+            }
+            if (phase === 'itemMenu') {
+              itemMenu.handleKey(payload.code);
+              return;
+            }
             if (phase === 'performing' && rhythm && LANE_KEYS.includes(payload.code)) {
               rhythm.onKeyDown(payload.code);
             }
@@ -451,7 +550,10 @@ export const battleScene = (() => {
       rhythmUI.hide();
       battleHud.hide();
       battleFx.hide();
+      itemMenu.hide();
       resetTimeFx();
+      player?.clearBuffs();
+      enemy?.clearBuffs();
 
       if (group?.parent) group.parent.remove(group);
       group = null;

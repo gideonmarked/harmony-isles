@@ -19,6 +19,7 @@ import { eventBus } from './eventBus.js';
  *
  * @typedef {object} GameStateData
  * @property {ManagerState} manager
+ * @property {Record<string, number>} inventory   itemId → count
  * @property {Record<string, boolean>} flags  ad-hoc booleans for one-off conditions
  *
  * @typedef {{ type: string } & Record<string, any>} GameAction
@@ -28,7 +29,25 @@ import { eventBus } from './eventBus.js';
 function initialState() {
   return {
     manager: { name: 'Manager', credibility: 1, notes: 0, style: null },
+    inventory: defaultInventory(),
     flags: {},
+  };
+}
+
+/**
+ * Starting inventory — design doc §2.3 explicitly ships items as part
+ * of the demo. The slice cannot earn or buy items yet, so we seed
+ * enough to demonstrate every effect.
+ *
+ * @returns {Record<string, number>}
+ */
+function defaultInventory() {
+  return {
+    energyDrink: 2,
+    focusPill: 1,
+    grooveBooster: 1,
+    confidenceBadge: 1,
+    creativeSpark: 1,
   };
 }
 
@@ -57,6 +76,14 @@ function reduce(state, action) {
       return { ...state, flags: { ...state.flags, [action.key]: !!action.value } };
     case 'SELECT_MANAGER_STYLE':
       return { ...state, manager: { ...state.manager, style: action.style } };
+    case 'CONSUME_ITEM': {
+      const have = state.inventory[action.itemId] ?? 0;
+      if (have <= 0) return state;
+      const next = { ...state.inventory };
+      if (have <= 1) delete next[action.itemId];
+      else next[action.itemId] = have - 1;
+      return { ...state, inventory: next };
+    }
     default:
       return state;
   }

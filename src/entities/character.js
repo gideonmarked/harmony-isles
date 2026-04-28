@@ -68,6 +68,44 @@ export class Character {
 
     /** True between defending and the next incoming hit. Halves damage. */
     this.isDefending = false;
+
+    /**
+     * Multiplicative buffs from items / status effects, applied per
+     * design doc §21.4 stacking rules. Reset between battles.
+     * @type {Record<string, number>}
+     */
+    this.statBuffs = {
+      technicality: 1,
+      focus: 1,
+      groove: 1,
+      confidence: 1,
+      creativity: 1,
+      energy: 1,
+    };
+  }
+
+  /** Reset all per-battle buffs. Call between battles or on scene exit. */
+  clearBuffs() {
+    this.statBuffs = {
+      technicality: 1,
+      focus: 1,
+      groove: 1,
+      confidence: 1,
+      creativity: 1,
+      energy: 1,
+    };
+  }
+
+  /**
+   * Heal HP up to the cap.
+   *
+   * @param {number} amount
+   * @returns {{ before: number, after: number }}
+   */
+  heal(amount) {
+    const before = this.hp;
+    this.hp = Math.min(this.hpMax, this.hp + Math.max(0, Math.floor(amount)));
+    return { before, after: this.hp };
   }
 
   /**
