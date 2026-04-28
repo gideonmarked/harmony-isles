@@ -77,13 +77,26 @@ export const CRIT_WINDOW_MS = 30;
 export const LANE_KEYS = ['KeyD', 'KeyF', 'KeyJ', 'KeyK'];
 
 /**
+ * @typedef {object} RhythmModifiers
+ * @property {number} [perfectWindowBonusMs]   Added to PERFECT_WINDOW_MS for this round.
+ * @property {number} [critWindowBonusMs]      Added to CRIT_WINDOW_MS for this round.
+ */
+
+/**
  * Start a rhythm round.
  *
  * @param {SongPattern} pattern
  * @param {() => number} clockFn  Returns seconds since song start.
+ * @param {RhythmModifiers} [modifiers]  Per-character timing tweaks.
  * @returns {RhythmController}
  */
-export function startRhythm(pattern, clockFn) {
+export function startRhythm(pattern, clockFn, modifiers) {
+  const perfectWindow = PERFECT_WINDOW_MS + (modifiers?.perfectWindowBonusMs ?? 0);
+  const critWindow = Math.min(
+    perfectWindow,
+    CRIT_WINDOW_MS + (modifiers?.critWindowBonusMs ?? 0)
+  );
+  const goodWindow = Math.max(GOOD_WINDOW_MS, perfectWindow);
   /** @type {LiveNote[]} */
   const liveNotes = pattern.notes.map((note) => ({
     note,
@@ -103,8 +116,8 @@ export function startRhythm(pattern, clockFn) {
 
   /** @param {number} absDeltaMs @returns {HitGrade} */
   function gradeForDelta(absDeltaMs) {
-    if (absDeltaMs <= PERFECT_WINDOW_MS) return 'perfect';
-    if (absDeltaMs <= GOOD_WINDOW_MS) return 'good';
+    if (absDeltaMs <= perfectWindow) return 'perfect';
+    if (absDeltaMs <= goodWindow) return 'good';
     return 'miss';
   }
 
@@ -115,7 +128,7 @@ export function startRhythm(pattern, clockFn) {
     ln.hitDeltaMs = deltaMs;
 
     const isCritical =
-      grade === 'perfect' && deltaMs !== null && Math.abs(deltaMs) <= CRIT_WINDOW_MS;
+      grade === 'perfect' && deltaMs !== null && Math.abs(deltaMs) <= critWindow;
     ln.critical = isCritical;
 
     if (grade === 'perfect') {
@@ -145,7 +158,7 @@ export function startRhythm(pattern, clockFn) {
     for (const ln of liveNotes) {
       if (ln.resolved) continue;
       const deltaMs = (t - ln.note.time) * 1000;
-      if (deltaMs > GOOD_WINDOW_MS) {
+      if (deltaMs > goodWindow) {
         resolveNote(ln, 'miss', null);
       }
     }
@@ -170,7 +183,7 @@ export function startRhythm(pattern, clockFn) {
       if (ln.resolved) continue;
       if (ln.note.lane !== lane) continue;
       const deltaMs = (t - ln.note.time) * 1000;
-      if (deltaMs < -GOOD_WINDOW_MS || deltaMs > GOOD_WINDOW_MS) continue;
+      if (deltaMs < -goodWindow || deltaMs > goodWindow) continue;
       const abs = Math.abs(deltaMs);
       if (abs < bestAbsDelta) {
         bestAbsDelta = abs;

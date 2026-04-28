@@ -137,7 +137,18 @@ export const battleScene = (() => {
     }
 
     rhythmStartMs = performance.now();
-    rhythm = startRhythm(pattern, () => (performance.now() - rhythmStartMs) / 1000);
+    // Technicality widens the Perfect window per design doc §1.3.
+    // Baseline is stat 5; each point above adds 3 ms, each point
+    // below tightens by 3 ms (clamped to non-negative inside the
+    // engine via Math.max with the good window).
+    const tech = player.stats.technicality;
+    const perfectWindowBonusMs = (tech - 5) * 3;
+    const critWindowBonusMs = Math.max(0, Math.floor((tech - 5) * 1.5));
+    rhythm = startRhythm(
+      pattern,
+      () => (performance.now() - rhythmStartMs) / 1000,
+      { perfectWindowBonusMs, critWindowBonusMs }
+    );
     rhythmUI.show(rhythm.getLiveNotes, rhythm.getCurrentTime, {
       bandPerformance: bandPerformance,
     });
@@ -155,10 +166,16 @@ export const battleScene = (() => {
 
     phase = 'resolving';
 
+    // Creativity scales skill-style perform damage per design doc
+    // §1.3 / §15. Baseline at stat 5 is 1.0x; each point above adds
+    // 5 %, each point below subtracts 5 % (floored at 0.5x so a very
+    // unfocused character can still chip).
+    const creativityMult = Math.max(0.5, 1 + (player.stats.creativity - 5) * 0.05);
     const baseDamage =
-      PERFORM_BASE_DAMAGE +
-      result.accuracy * PERFORM_ACCURACY_DAMAGE +
-      result.criticals * PERFORM_CRIT_DAMAGE;
+      (PERFORM_BASE_DAMAGE +
+        result.accuracy * PERFORM_ACCURACY_DAMAGE +
+        result.criticals * PERFORM_CRIT_DAMAGE) *
+      creativityMult;
     const damage = Math.round(bp ? baseDamage * BAND_PERFORMANCE_DAMAGE_MULT : baseDamage);
     enemy.takeDamage(damage);
     emitHp('enemy');
@@ -236,11 +253,15 @@ export const battleScene = (() => {
     enter(ctx) {
       group = new THREE.Group();
 
+      // Per design doc §9 (stat curves per role) characters have
+      // varying stats; the slice tunes the player's defaults around
+      // 7 to give Technicality / Creativity a visible effect on
+      // Perfect window and damage scaling vs the Rival.
       player = new Character({
         id: 'p1',
         name: 'Player',
         isPlayer: true,
-        stats: { technicality: 5, focus: 5, groove: 5, confidence: 5, creativity: 5, energy: 5 },
+        stats: { technicality: 7, focus: 6, groove: 6, confidence: 7, creativity: 8, energy: 6 },
         hpMax: 100,
         mpMax: 50,
       });
@@ -251,7 +272,7 @@ export const battleScene = (() => {
         id: 'e1',
         name: 'Rival',
         isPlayer: false,
-        stats: { technicality: 4, focus: 4, groove: 4, confidence: 4, creativity: 4, energy: 4 },
+        stats: { technicality: 4, focus: 5, groove: 5, confidence: 5, creativity: 4, energy: 4 },
         hpMax: 80,
         mpMax: 30,
       });
