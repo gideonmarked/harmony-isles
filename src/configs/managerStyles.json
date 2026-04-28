@@ -1,0 +1,62 @@
+{
+  "hustler": {
+    "id": "hustler",
+    "name": "The Hustler",
+    "theme": "Money-focused",
+    "summary": "+25% Notes from battles, weekly payout +15%.",
+    "tradeoff": "Recruitment chance −1% baseline.",
+    "effects": {
+      "notesGainMult": 1.25,
+      "weeklyPayoutMult": 1.15,
+      "recruitChanceBonus": -0.01
+    }
+  },
+  "visionary": {
+    "id": "visionary",
+    "name": "The Visionary",
+    "theme": "Creative",
+    "summary": "+15% Creativity stat for the whole band, songs cost 25% less MP.",
+    "tradeoff": "Confidence growth 10% slower.",
+    "effects": {
+      "creativityStatMult": 1.15,
+      "songMpCostMult": 0.75,
+      "confidenceGrowthMult": 0.9
+    }
+  },
+  "coach": {
+    "id": "coach",
+    "name": "The Coach",
+    "theme": "Steady growth",
+    "summary": "+30% exp gain for whole band, +50% Confidence regen between battles.",
+    "tradeoff": "Damage −10% across the board.",
+    "effects": {
+      "expGainMult": 1.3,
+      "confidenceRegenMult": 1.5,
+      "damageMult": 0.9
+    }
+  },
+  "showrunner": {
+    "id": "showrunner",
+    "name": "The Showrunner",
+    "theme": "Hype-focused",
+    "summary": "+25% Hype gain, Band Performances +15% damage.",
+    "tradeoff": "Notes earned −10%.",
+    "effects": {
+      "hypeGainMult": 1.25,
+      "bandPerformanceDamageMult": 1.15,
+      "notesGainMult": 0.9
+    }
+  },
+  "mentor": {
+    "id": "mentor",
+    "name": "The Mentor",
+    "theme": "Recruitment",
+    "summary": "+5% baseline join chance, rare+ artists 1.5× more common.",
+    "tradeoff": "Tier-3+ instruments cost 20% more.",
+    "effects": {
+      "recruitChanceBonus": 0.05,
+      "rareSpawnMult": 1.5,
+      "instrumentTier3PlusCostMult": 1.2
+    }
+  }
+}

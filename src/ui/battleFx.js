@@ -114,8 +114,14 @@ class BattleFx {
       ),
       eventBus.on(
         'battle.encounterStarted',
-        /** @param {{ encounterName: string, playerName: string, enemyName: string }} p */
-        (p) => this.#showEncounterTelegraph(p.encounterName, p.playerName, p.enemyName)
+        /** @param {{ encounterName: string, playerName: string, enemyName: string, styleName?: string }} p */
+        (p) =>
+          this.#showEncounterTelegraph(
+            p.encounterName,
+            p.playerName,
+            p.enemyName,
+            p.styleName
+          )
       )
     );
   }
@@ -159,11 +165,15 @@ class BattleFx {
    * @param {string} encounterName
    * @param {string} playerName
    * @param {string} enemyName
+   * @param {string} [styleName]
    */
-  #showEncounterTelegraph(encounterName, playerName, enemyName) {
+  #showEncounterTelegraph(encounterName, playerName, enemyName, styleName) {
     if (!this.#root) return;
+    const subtitle = styleName
+      ? `${playerName}  vs  ${enemyName}  ·  ${styleName}`
+      : `${playerName}  vs  ${enemyName}`;
     this.#setBanner(encounterName, '');
-    this.#setSubtitle(`${playerName}  vs  ${enemyName}`);
+    this.#setSubtitle(subtitle);
     const banner = this.#qs('banner');
     const sub = this.#qs('subtitle');
     banner?.classList.remove('bp', 'victory', 'defeat');

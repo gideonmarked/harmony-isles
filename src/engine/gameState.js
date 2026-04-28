@@ -3,10 +3,19 @@
 import { eventBus } from './eventBus.js';
 
 /**
+ * @typedef {object} ManagerStyle
+ * @property {string} id
+ * @property {string} name
+ * @property {string} theme
+ * @property {string} summary
+ * @property {string} tradeoff
+ * @property {Record<string, number>} effects   See managerStyles.json schema.
+ *
  * @typedef {object} ManagerState
  * @property {string} name
- * @property {number} credibility   1–100
- * @property {number} notes         in-game currency
+ * @property {number} credibility       1–100
+ * @property {number} notes             in-game currency
+ * @property {ManagerStyle | null} style   Picked at new game; permanent until New Game+.
  *
  * @typedef {object} GameStateData
  * @property {ManagerState} manager
@@ -18,7 +27,7 @@ import { eventBus } from './eventBus.js';
 /** @returns {GameStateData} */
 function initialState() {
   return {
-    manager: { name: 'Manager', credibility: 1, notes: 0 },
+    manager: { name: 'Manager', credibility: 1, notes: 0, style: null },
     flags: {},
   };
 }
@@ -46,6 +55,8 @@ function reduce(state, action) {
       };
     case 'SET_FLAG':
       return { ...state, flags: { ...state.flags, [action.key]: !!action.value } };
+    case 'SELECT_MANAGER_STYLE':
+      return { ...state, manager: { ...state.manager, style: action.style } };
     default:
       return state;
   }

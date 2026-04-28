@@ -5,6 +5,7 @@ import * as THREE from 'three';
 import { eventBus } from '../engine/eventBus.js';
 import { sceneManager } from '../engine/sceneManager.js';
 import { getConfig } from '../engine/configService.js';
+import { getState } from '../engine/gameState.js';
 import { startRhythm, LANE_KEYS } from '../engine/rhythmEngine.js';
 import { freezeFor, shakeCamera, resetTimeFx } from '../engine/timeFx.js';
 import { Character } from '../entities/character.js';
@@ -166,17 +167,30 @@ export const battleScene = (() => {
 
     phase = 'resolving';
 
+    // Manager Style multiplier (design doc §21.4 stacking, applied
+    // last over the rest of the formula). Effects map keys are
+    // documented in src/configs/managerStyles.json.
+    const fx = getState().manager.style?.effects ?? {};
+
     // Creativity scales skill-style perform damage per design doc
-    // §1.3 / §15. Baseline at stat 5 is 1.0x; each point above adds
-    // 5 %, each point below subtracts 5 % (floored at 0.5x so a very
-    // unfocused character can still chip).
-    const creativityMult = Math.max(0.5, 1 + (player.stats.creativity - 5) * 0.05);
-    const baseDamage =
+    // §1.3 / §15. Visionary's creativityStatMult (1.15) multiplies the
+    // raw stat before the curve, so the +15% applies cleanly.
+    const effectiveCreativity =
+      player.stats.creativity * (fx.creativityStatMult ?? 1);
+    const creativityMult = Math.max(0.5, 1 + (effectiveCreativity - 5) * 0.05);
+
+    let baseDamage =
       (PERFORM_BASE_DAMAGE +
         result.accuracy * PERFORM_ACCURACY_DAMAGE +
         result.criticals * PERFORM_CRIT_DAMAGE) *
       creativityMult;
-    const damage = Math.round(bp ? baseDamage * BAND_PERFORMANCE_DAMAGE_MULT : baseDamage);
+
+    // Coach: -10% damage across the board.
+    baseDamage *= fx.damageMult ?? 1;
+
+    // Showrunner: +15% damage on Band Performances.
+    const bpMult = BAND_PERFORMANCE_DAMAGE_MULT * (fx.bandPerformanceDamageMult ?? 1);
+    const damage = Math.round(bp ? baseDamage * bpMult : baseDamage);
     player.playAttack();
     enemy.takeDamage(damage);
     emitHp('enemy');
@@ -192,7 +206,10 @@ export const battleScene = (() => {
       hype = 0;
       hypeGain = -HYPE_MAX;
     } else {
-      hypeGain = Math.round(PERFORM_BASE_HYPE + result.accuracy * PERFORM_ACCURACY_HYPE);
+      // Showrunner: +25% Hype gain.
+      const rawHype = (PERFORM_BASE_HYPE + result.accuracy * PERFORM_ACCURACY_HYPE) *
+        (fx.hypeGainMult ?? 1);
+      hypeGain = Math.round(rawHype);
       hype = Math.min(HYPE_MAX, hype + hypeGain);
     }
     emitHype();
@@ -291,10 +308,12 @@ export const battleScene = (() => {
         player: { name: player.name, hp: player.hp, hpMax: player.hpMax },
         enemy: { name: enemy.name, hp: enemy.hp, hpMax: enemy.hpMax },
       });
+      const activeStyle = getState().manager.style;
       eventBus.emit('battle.encounterStarted', {
         encounterName: 'JAM CLASH!',
         playerName: player.name,
         enemyName: enemy.name,
+        styleName: activeStyle?.name ?? '',
       });
       emitHype();
       setPrompt('');
