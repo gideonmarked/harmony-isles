@@ -4,36 +4,38 @@ import * as THREE from 'three';
 
 import { eventBus } from '../engine/eventBus.js';
 import { sceneManager } from '../engine/sceneManager.js';
+import { getConfig } from '../engine/configService.js';
+import { startRhythm, LANE_KEYS } from '../engine/rhythmEngine.js';
 import { Character } from '../entities/character.js';
 import { battleHud } from '../ui/battleHud.js';
+import { rhythmUI } from '../ui/rhythmUI.js';
 
 /**
- * Battle scene — the Jam Clash arena. Spawns one player and one enemy,
- * runs a small turn-based state machine, and routes input through the
- * HUD prompt.
+ * Battle scene — the Jam Clash arena.
  *
- * The Perform action is currently a **stub**: pressing Z deals fixed
- * damage and gains Hype without playing the rhythm minigame. The real
- * rhythm engine replaces this stub in a follow-up commit. The state
- * machine, HUD wiring, KO resolution, and damage events are deliberately
- * shaped to match what the rhythm engine will need so the swap is local.
+ * Spawns a player and an enemy, runs a turn-based state machine, and
+ * delegates the Perform action to the rhythm engine. Rhythm accuracy
+ * scales the perform damage and Hype gain.
  *
  * State machine:
  *   playerTurn  → wait for Z, transition to performing
- *   performing  → resolve damage + Hype, transition to enemyTurn
- *   enemyTurn   → automated enemy strike, transition to playerTurn
+ *   performing  → rhythm round runs; on completion → resolving
+ *   resolving   → apply damage + Hype, brief pause, → enemyTurn
+ *   enemyTurn   → automated enemy strike, → playerTurn
  *   gameOver    → victory or defeat; Esc returns to title
  *
  * @type {import('../engine/sceneManager.js').Scene}
  */
 export const battleScene = (() => {
-  /** @typedef {'playerTurn' | 'performing' | 'enemyTurn' | 'gameOver'} BattlePhase */
+  /** @typedef {'playerTurn' | 'performing' | 'resolving' | 'enemyTurn' | 'gameOver'} BattlePhase */
 
   const HYPE_MAX = 100;
-  const PLAYER_PERFORM_DAMAGE = { min: 12, max: 18 };
-  const PLAYER_HYPE_GAIN = 20;
-  const ENEMY_PERFORM_DAMAGE = { min: 8, max: 12 };
-  const PERFORM_DELAY_MS = 400;
+  const PERFORM_BASE_DAMAGE = 20;
+  const PERFORM_ACCURACY_DAMAGE = 60;
+  const PERFORM_BASE_HYPE = 15;
+  const PERFORM_ACCURACY_HYPE = 25;
+  const ENEMY_PERFORM_DAMAGE = { min: 8, max: 14 };
+  const RESOLVE_DELAY_MS = 600;
   const ENEMY_TURN_DELAY_MS = 800;
 
   /** @type {THREE.Group | null} */
@@ -49,6 +51,11 @@ export const battleScene = (() => {
   let unsubs = [];
   /** @type {ReturnType<typeof setTimeout>[]} */
   let timers = [];
+
+  /** @type {ReturnType<typeof startRhythm> | null} */
+  let rhythm = null;
+  /** Time (ms, performance.now-relative) when the current rhythm round started. */
+  let rhythmStartMs = 0;
 
   function emitHp(/** @type {'player'|'enemy'} */ side) {
     const c = side === 'player' ? player : enemy;
@@ -88,29 +95,69 @@ export const battleScene = (() => {
 
   function startPlayerTurn() {
     phase = 'playerTurn';
-    setPrompt('Your turn — press Z to perform.');
+    setPrompt('Your turn — press Z to perform Final Encore.');
   }
 
-  function performStub() {
+  function startPerform() {
     if (!player || !enemy) return;
+    const songs = getConfig('songs');
+    const pattern = songs.encore;
+    if (!pattern) {
+      console.error('battleScene: songs.encore pattern missing');
+      return;
+    }
+
     phase = 'performing';
-    setPrompt('Performing…');
+    setPrompt('Hit the lanes — D F J K');
 
-    // Stub damage roll — replaced by rhythm-engine accuracy in next chunk.
-    const dmg =
-      PLAYER_PERFORM_DAMAGE.min +
-      Math.floor(Math.random() * (PLAYER_PERFORM_DAMAGE.max - PLAYER_PERFORM_DAMAGE.min + 1));
-    enemy.takeDamage(dmg);
+    rhythmStartMs = performance.now();
+    rhythm = startRhythm(pattern, () => (performance.now() - rhythmStartMs) / 1000);
+    rhythmUI.show(rhythm.getLiveNotes, rhythm.getCurrentTime);
+  }
+
+  function resolvePerform() {
+    if (!player || !enemy || !rhythm) return;
+    const result = rhythm.getResult();
+
+    rhythm.stop();
+    rhythm = null;
+    rhythmUI.hide();
+
+    phase = 'resolving';
+
+    const damage = Math.round(
+      PERFORM_BASE_DAMAGE + result.accuracy * PERFORM_ACCURACY_DAMAGE
+    );
+    enemy.takeDamage(damage);
     emitHp('enemy');
-    eventBus.emit('battle.damageDealt', { from: player.id, to: enemy.id, amount: dmg });
+    eventBus.emit('battle.damageDealt', {
+      from: player.id,
+      to: enemy.id,
+      amount: damage,
+    });
 
-    hype = Math.min(HYPE_MAX, hype + PLAYER_HYPE_GAIN);
+    const hypeGain = Math.round(
+      PERFORM_BASE_HYPE + result.accuracy * PERFORM_ACCURACY_HYPE
+    );
+    hype = Math.min(HYPE_MAX, hype + hypeGain);
     emitHype();
+
+    const grade =
+      result.flawless
+        ? 'FLAWLESS'
+        : result.accuracy >= 0.8
+          ? 'GREAT'
+          : result.accuracy >= 0.5
+            ? 'GOOD'
+            : 'ROUGH';
+    setPrompt(
+      `${grade} — ${result.perfect}P / ${result.good}G / ${result.miss}M · ${damage} dmg · +${hypeGain} Hype`
+    );
 
     delay(() => {
       if (checkVictory()) return;
       startEnemyTurn();
-    }, PERFORM_DELAY_MS);
+    }, RESOLVE_DELAY_MS);
   }
 
   function startEnemyTurn() {
@@ -154,7 +201,7 @@ export const battleScene = (() => {
         name: 'Rival',
         isPlayer: false,
         stats: { technicality: 4, focus: 4, groove: 4, confidence: 4, creativity: 4, energy: 4 },
-        hpMax: 60,
+        hpMax: 80,
         mpMax: 30,
       });
       enemy.mesh.position.set(2, 0.8, 0);
@@ -177,11 +224,20 @@ export const battleScene = (() => {
           (payload) => {
             if (!payload) return;
             if (payload.code === 'Escape') {
+              if (rhythm) {
+                rhythm.stop();
+                rhythm = null;
+                rhythmUI.hide();
+              }
               sceneManager.transition('title');
               return;
             }
-            if (payload.code === 'KeyZ' && phase === 'playerTurn') {
-              performStub();
+            if (phase === 'playerTurn' && payload.code === 'KeyZ') {
+              startPerform();
+              return;
+            }
+            if (phase === 'performing' && rhythm && LANE_KEYS.includes(payload.code)) {
+              rhythm.onKeyDown(payload.code);
             }
           }
         )
@@ -190,12 +246,26 @@ export const battleScene = (() => {
       startPlayerTurn();
     },
 
+    update() {
+      if (phase !== 'performing' || !rhythm) return;
+      rhythm.tick();
+      rhythmUI.update();
+      if (rhythm.isComplete()) {
+        resolvePerform();
+      }
+    },
+
     exit() {
       for (const u of unsubs) u();
       unsubs = [];
       for (const t of timers) clearTimeout(t);
       timers = [];
 
+      if (rhythm) {
+        rhythm.stop();
+        rhythm = null;
+      }
+      rhythmUI.hide();
       battleHud.hide();
 
       if (group?.parent) group.parent.remove(group);

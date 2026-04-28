@@ -1,0 +1,30 @@
+{
+  "encore": {
+    "name": "Final Encore",
+    "bpm": 120,
+    "duration": 9.0,
+    "lanes": 4,
+    "notes": [
+      { "time": 1.5, "lane": 0 },
+      { "time": 2.0, "lane": 1 },
+      { "time": 2.5, "lane": 2 },
+      { "time": 3.0, "lane": 3 },
+      { "time": 3.5, "lane": 0 },
+      { "time": 3.5, "lane": 2 },
+      { "time": 4.0, "lane": 1 },
+      { "time": 4.5, "lane": 3 },
+      { "time": 5.0, "lane": 0 },
+      { "time": 5.25, "lane": 1 },
+      { "time": 5.5, "lane": 2 },
+      { "time": 5.75, "lane": 3 },
+      { "time": 6.0, "lane": 0 },
+      { "time": 6.0, "lane": 3 },
+      { "time": 6.5, "lane": 1 },
+      { "time": 6.5, "lane": 2 },
+      { "time": 7.0, "lane": 0 },
+      { "time": 7.5, "lane": 2 },
+      { "time": 8.0, "lane": 1 },
+      { "time": 8.0, "lane": 3 }
+    ]
+  }
+}
