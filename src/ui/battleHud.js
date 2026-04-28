@@ -52,6 +52,24 @@ class BattleHud {
         #battle-hud .bar-fill.hp   { background: #e85a5a; }
         #battle-hud .bar-fill.hype { background: #ffb949; }
         #battle-hud .num { font-variant-numeric: tabular-nums; opacity: 0.85; }
+        #battle-hud .panel.hype.full {
+          border-color: #ffb949;
+          box-shadow: 0 0 18px rgba(255, 185, 73, 0.55);
+          animation: hud-hype-pulse 900ms ease-in-out infinite;
+        }
+        #battle-hud .panel.hype.full .bar-fill.hype {
+          background: linear-gradient(90deg, #ffb949 0%, #ffe27d 50%, #ffb949 100%);
+          background-size: 200% 100%;
+          animation: hud-hype-shimmer 1.6s linear infinite;
+        }
+        @keyframes hud-hype-pulse {
+          0%, 100% { box-shadow: 0 0 12px rgba(255, 185, 73, 0.35); }
+          50%      { box-shadow: 0 0 24px rgba(255, 185, 73, 0.85); }
+        }
+        @keyframes hud-hype-shimmer {
+          0%   { background-position: 0% 50%; }
+          100% { background-position: 200% 50%; }
+        }
       </style>
       <div class="panel player">
         <div class="name" data-bind="player-name">Player</div>
@@ -96,6 +114,8 @@ class BattleHud {
           const pct = p.max > 0 ? (p.value / p.max) * 100 : 0;
           this.#setStyleWidth('hype', pct);
           this.#setText('hype-text', `${Math.round(p.value)} / ${p.max}`);
+          const panel = this.#root?.querySelector('.panel.hype');
+          panel?.classList.toggle('full', p.value >= p.max);
         }
       ),
       eventBus.on(

@@ -5,6 +5,12 @@ import * as THREE from 'three';
 const VIEW_SIZE = 12;
 
 /**
+ * Camera rest position. Exported so juice systems (screen shake) can
+ * perturb around a known anchor and snap back without drifting.
+ */
+export const CAMERA_BASE_POSITION = Object.freeze({ x: 20, y: 20, z: 20 });
+
+/**
  * Build a Three.js orthographic-isometric renderer with a placeholder
  * scene. The camera is angled to produce a 2:1 isometric look; sprites
  * and tiles are placed on the XZ ground plane with Y used for sort
@@ -39,7 +45,7 @@ export function createRenderer(mount) {
     0.1,
     1000
   );
-  camera.position.set(20, 20, 20);
+  camera.position.set(CAMERA_BASE_POSITION.x, CAMERA_BASE_POSITION.y, CAMERA_BASE_POSITION.z);
   camera.lookAt(0, 0, 0);
 
   scene.add(new THREE.AmbientLight(0xffffff, 0.6));

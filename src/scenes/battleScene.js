@@ -6,8 +6,10 @@ import { eventBus } from '../engine/eventBus.js';
 import { sceneManager } from '../engine/sceneManager.js';
 import { getConfig } from '../engine/configService.js';
 import { startRhythm, LANE_KEYS } from '../engine/rhythmEngine.js';
+import { freezeFor, shakeCamera, resetTimeFx } from '../engine/timeFx.js';
 import { Character } from '../entities/character.js';
 import { battleHud } from '../ui/battleHud.js';
+import { battleFx } from '../ui/battleFx.js';
 import { rhythmUI } from '../ui/rhythmUI.js';
 
 /**
@@ -87,11 +89,17 @@ export const battleScene = (() => {
     if (enemy.isKO) {
       phase = 'gameOver';
       setPrompt('Victory! Press Esc to return.');
+      shakeCamera(0.65, 480);
+      freezeFor(220);
+      eventBus.emit('battle.gameOver', { outcome: 'victory' });
       return true;
     }
     if (player.isKO) {
       phase = 'gameOver';
       setPrompt('Defeated. Press Esc to return.');
+      shakeCamera(0.55, 420);
+      freezeFor(220);
+      eventBus.emit('battle.gameOver', { outcome: 'defeat' });
       return true;
     }
     return false;
@@ -249,11 +257,35 @@ export const battleScene = (() => {
 
       hype = 0;
       battleHud.show();
+      battleFx.show();
       eventBus.emit('battle.charactersChanged', {
         player: { name: player.name, hp: player.hp, hpMax: player.hpMax },
         enemy: { name: enemy.name, hp: enemy.hp, hpMax: enemy.hpMax },
       });
       emitHype();
+
+      // Damage feedback — hit-pause + shake scaled by hit size and
+      // whether it was a Band Performance climax. Subscribed inside the
+      // scene's lifecycle so it auto-cleans on exit.
+      unsubs.push(
+        eventBus.on(
+          'battle.damageDealt',
+          /** @param {{ amount: number, bandPerformance?: boolean }} p */
+          (p) => {
+            if (!p) return;
+            if (p.bandPerformance) {
+              shakeCamera(0.45, 380);
+              freezeFor(140);
+            } else if (p.amount >= 50) {
+              shakeCamera(0.28, 260);
+              freezeFor(90);
+            } else {
+              shakeCamera(0.16, 200);
+              freezeFor(60);
+            }
+          }
+        )
+      );
 
       unsubs.push(
         eventBus.on(
@@ -329,6 +361,8 @@ export const battleScene = (() => {
       }
       rhythmUI.hide();
       battleHud.hide();
+      battleFx.hide();
+      resetTimeFx();
 
       if (group?.parent) group.parent.remove(group);
       group = null;

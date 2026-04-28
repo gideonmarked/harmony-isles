@@ -7,7 +7,8 @@ import { audioManager } from './engine/audioManager.js';
 import { inputManager } from './engine/inputManager.js';
 import { sceneManager } from './engine/sceneManager.js';
 import { RNG } from './util/rng.js';
-import { createRenderer } from './engine/renderer.js';
+import { createRenderer, CAMERA_BASE_POSITION } from './engine/renderer.js';
+import { isFrozen, applyShakeToCamera } from './engine/timeFx.js';
 import { titleScene } from './scenes/titleScene.js';
 import { battleScene } from './scenes/battleScene.js';
 
@@ -64,7 +65,11 @@ function loop(now) {
     fpsFrames = 0;
   }
 
-  sceneManager.update(dt);
+  if (!isFrozen()) {
+    sceneManager.update(dt);
+  }
+  applyShakeToCamera(camera, CAMERA_BASE_POSITION, dt);
+
   renderer.render(scene, camera);
   inputManager.endFrame();
 
