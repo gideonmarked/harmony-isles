@@ -4,8 +4,12 @@ import { eventBus } from './engine/eventBus.js';
 import { dispatch, getState } from './engine/gameState.js';
 import { getConfig, listConfigs } from './engine/configService.js';
 import { audioManager } from './engine/audioManager.js';
+import { inputManager } from './engine/inputManager.js';
+import { sceneManager } from './engine/sceneManager.js';
 import { RNG } from './util/rng.js';
 import { createRenderer } from './engine/renderer.js';
+import { titleScene } from './scenes/titleScene.js';
+import { battleScene } from './scenes/battleScene.js';
 
 const mount = /** @type {HTMLElement | null} */ (document.getElementById('app'));
 const fpsEl = /** @type {HTMLElement | null} */ (document.getElementById('fps'));
@@ -34,6 +38,12 @@ console.log('[boot]', {
 
 const { renderer, scene, camera, resize } = createRenderer(mount);
 
+inputManager.attach();
+sceneManager.init({ scene, camera });
+sceneManager.register(titleScene);
+sceneManager.register(battleScene);
+sceneManager.transition('title');
+
 window.addEventListener('resize', resize);
 
 let lastFrame = performance.now();
@@ -54,7 +64,10 @@ function loop(now) {
     fpsFrames = 0;
   }
 
+  sceneManager.update(dt);
   renderer.render(scene, camera);
+  inputManager.endFrame();
+
   requestAnimationFrame(loop);
 }
 
