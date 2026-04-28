@@ -10,7 +10,7 @@ Build plan for the Harmony Isles demo. Scope splits into a **vertical slice** (t
 
 ```mermaid
 flowchart TB
-    subgraph PA["Phase A — Vertical slice • 2–3 focused days"]
+    subgraph PA["Phase A — Vertical slice • ~5 focused days"]
         direction LR
         A1[1. Scaffold] --> A2[2. Foundations]
         A2 --> A3[3. Battle scene]
@@ -61,9 +61,25 @@ flowchart LR
     end
 ```
 
-## Phase A — Vertical slice (target: 2–3 focused days)
+## Phase A — Vertical slice (target: ~5 focused days)
 
 A single playable Jam Clash that exercises every system the design doc calls "where the game lives or dies" (§33.2). No overworld, no shop, no save profiles, no encounter rolls. Press start → battle → win or lose → reload.
+
+### Why 5 days, not 3
+
+The slice's purpose is to de-risk the *hardest* systems end-to-end, not just the easy ones. The two most expensive parts are the rhythm engine (AudioContext sync, hit-window grading, drift across browsers) and the Band Performance limit-break (its own multi-lane minigame). Each takes ~1–1.5 days standalone; together with foundations, battle scaffolding, damage, Hype, and polish, the realistic envelope is 31–50 hours of focused work.
+
+This estimate assumes Claude Max in the loop for boilerplate and pair-programming, plus hands-on testing between iterations. Without AI assistance, the same slice is ~2 weeks for a senior dev.
+
+### Day-by-day shape (indicative)
+
+| Day | Focus |
+| --- | --- |
+| 1 | Scaffold (Vite, Three.js, tooling, CI) + foundations (EventBus, reducer, RNG, ConfigService, AudioManager) |
+| 2 | Battle scene (turn queue, action menu, HUD) + rhythm engine v1 |
+| 3 | Rhythm tuning + damage formula + tests + Hype Meter |
+| 4 | Band Performance limit-break (multi-lane phase runner, Final Encore) |
+| 5 | Polish (hit-pause, screen shake, end-of-battle), asset manifest, README run docs, slice handoff |
 
 ### What's in
 - 1 starter character vs. 1 enemy (placeholder sprites, 1v1)
