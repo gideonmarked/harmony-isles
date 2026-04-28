@@ -49,9 +49,24 @@ class BattleFx {
         }
         #battle-fx .banner.victory { color: #ffd84a; text-shadow: 0 0 24px rgba(255, 216, 74, 0.6); }
         #battle-fx .banner.defeat  { color: #e85a5a; text-shadow: 0 0 24px rgba(232, 90, 90, 0.55); }
-        #battle-fx .banner.subtitle {
-          font-size: 18px; font-weight: 600; letter-spacing: 1px; opacity: 0;
-          margin-top: 12px; color: #c8d4e0;
+        #battle-fx .subtitle {
+          position: absolute; left: 50%; top: calc(36% + 56px);
+          transform: translate(-50%, 0);
+          font-size: 18px; font-weight: 600; letter-spacing: 2px;
+          color: #c8d4e0;
+          opacity: 0; transition: opacity 220ms ease-out;
+          white-space: nowrap;
+        }
+        #battle-fx .subtitle.show { opacity: 0.92; }
+        #battle-fx .banner.encounter {
+          color: #6ec1ff;
+          text-shadow: 0 0 18px rgba(110, 193, 255, 0.6), 0 0 4px rgba(255, 255, 255, 0.6);
+          animation: encounter-slide 380ms ease-out 1;
+        }
+        @keyframes encounter-slide {
+          0%   { transform: translate(-50%, -50%) translateX(-40px) skewX(-12deg); opacity: 0; }
+          60%  { transform: translate(-50%, -50%) translateX(0) skewX(0deg); opacity: 1; }
+          100% { transform: translate(-50%, -50%) translateX(0) skewX(0deg); opacity: 1; }
         }
         #battle-fx .vignette {
           position: absolute; inset: 0;
@@ -81,6 +96,7 @@ class BattleFx {
       <div class="vignette" data-bind="vignette"></div>
       <div class="flash" data-bind="flash"></div>
       <div class="banner" data-bind="banner"></div>
+      <div class="subtitle" data-bind="subtitle"></div>
     `;
     document.body.appendChild(root);
     this.#root = root;
@@ -95,6 +111,11 @@ class BattleFx {
         'battle.gameOver',
         /** @param {{ outcome: 'victory' | 'defeat' }} p */
         (p) => this.#showResultBanner(p.outcome)
+      ),
+      eventBus.on(
+        'battle.encounterStarted',
+        /** @param {{ encounterName: string, playerName: string, enemyName: string }} p */
+        (p) => this.#showEncounterTelegraph(p.encounterName, p.playerName, p.enemyName)
       )
     );
   }
@@ -127,16 +148,43 @@ class BattleFx {
     if (!this.#root) return;
     const text = outcome === 'victory' ? 'VICTORY!' : 'DEFEATED';
     this.#setBanner(text, '');
+    this.#setSubtitle('');
     this.#setVignette(outcome);
     const banner = this.#qs('banner');
-    banner?.classList.remove('bp');
+    banner?.classList.remove('bp', 'encounter');
     banner?.classList.add('show', outcome);
+  }
+
+  /**
+   * @param {string} encounterName
+   * @param {string} playerName
+   * @param {string} enemyName
+   */
+  #showEncounterTelegraph(encounterName, playerName, enemyName) {
+    if (!this.#root) return;
+    this.#setBanner(encounterName, '');
+    this.#setSubtitle(`${playerName}  vs  ${enemyName}`);
+    const banner = this.#qs('banner');
+    const sub = this.#qs('subtitle');
+    banner?.classList.remove('bp', 'victory', 'defeat');
+    banner?.classList.add('show', 'encounter');
+    sub?.classList.add('show');
+    this.#after(1100, () => {
+      banner?.classList.remove('show', 'encounter');
+      sub?.classList.remove('show');
+    });
   }
 
   /** @param {string} title @param {string} _subtitle */
   #setBanner(title, _subtitle) {
     const banner = this.#qs('banner');
     if (banner) banner.textContent = title;
+  }
+
+  /** @param {string} text */
+  #setSubtitle(text) {
+    const sub = this.#qs('subtitle');
+    if (sub) sub.textContent = text;
   }
 
   /** @param {'bp' | 'victory' | 'defeat' | null} kind */

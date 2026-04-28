@@ -29,7 +29,7 @@ import { rhythmUI } from '../ui/rhythmUI.js';
  * @type {import('../engine/sceneManager.js').Scene}
  */
 export const battleScene = (() => {
-  /** @typedef {'playerTurn' | 'performing' | 'resolving' | 'enemyTurn' | 'gameOver'} BattlePhase */
+  /** @typedef {'introducing' | 'playerTurn' | 'performing' | 'resolving' | 'enemyTurn' | 'gameOver'} BattlePhase */
 
   const HYPE_MAX = 100;
   const PERFORM_BASE_DAMAGE = 20;
@@ -282,13 +282,20 @@ export const battleScene = (() => {
       ctx.scene.add(group);
 
       hype = 0;
+      phase = 'introducing';
       battleHud.show();
       battleFx.show();
       eventBus.emit('battle.charactersChanged', {
         player: { name: player.name, hp: player.hp, hpMax: player.hpMax },
         enemy: { name: enemy.name, hp: enemy.hp, hpMax: enemy.hpMax },
       });
+      eventBus.emit('battle.encounterStarted', {
+        encounterName: 'JAM CLASH!',
+        playerName: player.name,
+        enemyName: enemy.name,
+      });
       emitHype();
+      setPrompt('');
 
       // Damage feedback — hit-pause + shake scaled by hit size and
       // whether it was a Band Performance climax. Subscribed inside the
@@ -363,7 +370,11 @@ export const battleScene = (() => {
         )
       );
 
-      startPlayerTurn();
+      // Hold input briefly so the JAM CLASH! telegraph lands before
+      // the player can act. Matches the splash duration in battleFx.
+      delay(() => {
+        if (phase === 'introducing') startPlayerTurn();
+      }, 1100);
     },
 
     update() {
