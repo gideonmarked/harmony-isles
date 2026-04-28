@@ -43,8 +43,9 @@ class RhythmUI {
   /**
    * @param {() => import('../engine/rhythmEngine.js').LiveNote[]} getLiveNotes
    * @param {() => number} getNow
+   * @param {{ bandPerformance?: boolean }} [opts]
    */
-  show(getLiveNotes, getNow) {
+  show(getLiveNotes, getNow, opts) {
     if (this.#root) this.hide();
 
     this.#getLiveNotes = getLiveNotes;
@@ -52,6 +53,7 @@ class RhythmUI {
 
     const root = document.createElement('div');
     root.id = 'rhythm-ui';
+    if (opts?.bandPerformance) root.classList.add('band-performance');
     root.innerHTML = /* html */ `
       <style>
         #rhythm-ui {
@@ -67,6 +69,19 @@ class RhythmUI {
           background: rgba(8, 11, 16, 0.6);
           border: 1px solid #1d2632;
           border-radius: 6px;
+          transition: background 240ms ease-out, border-color 240ms ease-out, box-shadow 240ms ease-out;
+        }
+        #rhythm-ui.band-performance .stage {
+          background: rgba(50, 14, 24, 0.78);
+          border-color: #ff8a3a;
+          box-shadow: 0 0 32px rgba(255, 138, 58, 0.35);
+        }
+        #rhythm-ui.band-performance .lane {
+          background: rgba(255, 138, 58, 0.06);
+        }
+        #rhythm-ui.band-performance .hit-zone {
+          border-color: rgba(255, 200, 110, 0.65);
+          background: rgba(255, 200, 110, 0.08);
         }
         #rhythm-ui .lane {
           position: relative;

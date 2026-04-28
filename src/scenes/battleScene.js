@@ -34,8 +34,10 @@ export const battleScene = (() => {
   const PERFORM_ACCURACY_DAMAGE = 60;
   const PERFORM_BASE_HYPE = 15;
   const PERFORM_ACCURACY_HYPE = 25;
+  const BAND_PERFORMANCE_DAMAGE_MULT = 2.0;
   const ENEMY_PERFORM_DAMAGE = { min: 8, max: 14 };
   const RESOLVE_DELAY_MS = 600;
+  const BAND_PERFORMANCE_RESOLVE_DELAY_MS = 1200;
   const ENEMY_TURN_DELAY_MS = 800;
 
   /** @type {THREE.Group | null} */
@@ -56,6 +58,8 @@ export const battleScene = (() => {
   let rhythm = null;
   /** Time (ms, performance.now-relative) when the current rhythm round started. */
   let rhythmStartMs = 0;
+  /** True for the duration of a Band Performance round; affects damage and Hype on resolve. */
+  let isBandPerformance = false;
 
   function emitHp(/** @type {'player'|'enemy'} */ side) {
     const c = side === 'player' ? player : enemy;
@@ -95,69 +99,103 @@ export const battleScene = (() => {
 
   function startPlayerTurn() {
     phase = 'playerTurn';
-    setPrompt('Your turn — press Z to perform Final Encore.');
+    if (hype >= HYPE_MAX) {
+      setPrompt('Your turn — Z = Perform · X = BAND PERFORMANCE!');
+    } else {
+      setPrompt('Your turn — press Z to perform Final Encore.');
+    }
   }
 
-  function startPerform() {
+  /** @param {boolean} bandPerformance */
+  function startPerform(bandPerformance) {
     if (!player || !enemy) return;
     const songs = getConfig('songs');
-    const pattern = songs.encore;
+    const songId = bandPerformance ? 'encoreFinale' : 'encore';
+    const pattern = songs[songId];
     if (!pattern) {
-      console.error('battleScene: songs.encore pattern missing');
+      console.error(`battleScene: songs.${songId} pattern missing`);
       return;
     }
 
     phase = 'performing';
-    setPrompt('Hit the lanes — D F J K');
+    isBandPerformance = bandPerformance;
+    setPrompt(
+      bandPerformance ? 'BAND PERFORMANCE! — D F J K' : 'Hit the lanes — D F J K'
+    );
+
+    if (bandPerformance) {
+      eventBus.emit('battle.bandPerformanceStarted', { songId, name: pattern.name });
+    }
 
     rhythmStartMs = performance.now();
     rhythm = startRhythm(pattern, () => (performance.now() - rhythmStartMs) / 1000);
-    rhythmUI.show(rhythm.getLiveNotes, rhythm.getCurrentTime);
+    rhythmUI.show(rhythm.getLiveNotes, rhythm.getCurrentTime, {
+      bandPerformance: bandPerformance,
+    });
   }
 
   function resolvePerform() {
     if (!player || !enemy || !rhythm) return;
     const result = rhythm.getResult();
+    const bp = isBandPerformance;
 
     rhythm.stop();
     rhythm = null;
     rhythmUI.hide();
+    isBandPerformance = false;
 
     phase = 'resolving';
 
-    const damage = Math.round(
-      PERFORM_BASE_DAMAGE + result.accuracy * PERFORM_ACCURACY_DAMAGE
-    );
+    const baseDamage =
+      PERFORM_BASE_DAMAGE + result.accuracy * PERFORM_ACCURACY_DAMAGE;
+    const damage = Math.round(bp ? baseDamage * BAND_PERFORMANCE_DAMAGE_MULT : baseDamage);
     enemy.takeDamage(damage);
     emitHp('enemy');
     eventBus.emit('battle.damageDealt', {
       from: player.id,
       to: enemy.id,
       amount: damage,
+      bandPerformance: bp,
     });
 
-    const hypeGain = Math.round(
-      PERFORM_BASE_HYPE + result.accuracy * PERFORM_ACCURACY_HYPE
-    );
-    hype = Math.min(HYPE_MAX, hype + hypeGain);
+    let hypeGain;
+    if (bp) {
+      hype = 0;
+      hypeGain = -HYPE_MAX;
+    } else {
+      hypeGain = Math.round(PERFORM_BASE_HYPE + result.accuracy * PERFORM_ACCURACY_HYPE);
+      hype = Math.min(HYPE_MAX, hype + hypeGain);
+    }
     emitHype();
 
-    const grade =
-      result.flawless
-        ? 'FLAWLESS'
-        : result.accuracy >= 0.8
-          ? 'GREAT'
-          : result.accuracy >= 0.5
-            ? 'GOOD'
-            : 'ROUGH';
+    if (bp) {
+      eventBus.emit('battle.bandPerformanceEnded', {
+        accuracy: result.accuracy,
+        totalDamage: damage,
+        flawless: result.flawless,
+      });
+    }
+
+    const grade = result.flawless
+      ? 'FLAWLESS'
+      : result.accuracy >= 0.8
+        ? 'GREAT'
+        : result.accuracy >= 0.5
+          ? 'GOOD'
+          : 'ROUGH';
+    const hypeText = bp ? 'Hype consumed' : `+${hypeGain} Hype`;
+    const prefix = bp ? 'ENCORE! ' : '';
     setPrompt(
-      `${grade} — ${result.perfect}P / ${result.good}G / ${result.miss}M · ${damage} dmg · +${hypeGain} Hype`
+      `${prefix}${grade} — ${result.perfect}P / ${result.good}G / ${result.miss}M · ${damage} dmg · ${hypeText}`
     );
 
-    delay(() => {
-      if (checkVictory()) return;
-      startEnemyTurn();
-    }, RESOLVE_DELAY_MS);
+    delay(
+      () => {
+        if (checkVictory()) return;
+        startEnemyTurn();
+      },
+      bp ? BAND_PERFORMANCE_RESOLVE_DELAY_MS : RESOLVE_DELAY_MS
+    );
   }
 
   function startEnemyTurn() {
@@ -233,7 +271,11 @@ export const battleScene = (() => {
               return;
             }
             if (phase === 'playerTurn' && payload.code === 'KeyZ') {
-              startPerform();
+              startPerform(false);
+              return;
+            }
+            if (phase === 'playerTurn' && payload.code === 'KeyX' && hype >= HYPE_MAX) {
+              startPerform(true);
               return;
             }
             if (phase === 'performing' && rhythm && LANE_KEYS.includes(payload.code)) {
@@ -274,6 +316,7 @@ export const battleScene = (() => {
       enemy = null;
       hype = 0;
       phase = 'playerTurn';
+      isBandPerformance = false;
     },
   };
 })();
