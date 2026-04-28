@@ -1,0 +1,9 @@
+{
+  "version": "0.0.1-slice",
+  "demo": "harmony-isles",
+  "rngSeed": 1337,
+  "audio": {
+    "masterVolume": 0.8,
+    "offsetMs": 0
+  }
+}
