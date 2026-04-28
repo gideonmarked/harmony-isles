@@ -55,9 +55,14 @@ import { eventBus } from './eventBus.js';
  * @property {() => void} stop               Force-resolve any unhit notes as misses.
  */
 
-/** Hit windows in milliseconds. Tunable when "feel" passes happen. */
-export const PERFECT_WINDOW_MS = 60;
-export const GOOD_WINDOW_MS = 120;
+/**
+ * Hit windows in milliseconds. Slightly more forgiving than the design
+ * doc's 60/120 default so the slice is approachable to judges who
+ * aren't rhythm-game players. Tighten back toward 60/120 in a feel
+ * pass once the audience is calibrated.
+ */
+export const PERFECT_WINDOW_MS = 90;
+export const GOOD_WINDOW_MS = 200;
 
 /** Default lane → key code binding (4 lanes, home-row friendly). */
 export const LANE_KEYS = ['KeyD', 'KeyF', 'KeyJ', 'KeyK'];

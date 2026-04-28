@@ -16,7 +16,7 @@ import { LANE_KEYS } from '../engine/rhythmEngine.js';
  * timing in absolute terms.
  */
 
-const LOOK_AHEAD_S = 2.0;
+const LOOK_AHEAD_S = 2.5;
 const LANE_WIDTH = 70;
 const LANE_HEIGHT = 380;
 const HIT_ZONE_FROM_BOTTOM = 60;

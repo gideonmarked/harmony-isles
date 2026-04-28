@@ -258,9 +258,29 @@ export const battleScene = (() => {
       unsubs.push(
         eventBus.on(
           'input.keyDown',
-          /** @param {{ code: string }} payload */
+          /**
+           * @param {{ code: string, shiftKey?: boolean }} payload
+           */
           (payload) => {
             if (!payload) return;
+
+            // Debug shortcuts — held Shift unlocks them so they don't
+            // trigger by accident during rhythm play. Ship-build will
+            // gate these behind a build flag; harmless during the
+            // hackathon since judges aren't holding Shift.
+            if (payload.shiftKey && phase === 'playerTurn' && payload.code === 'KeyH') {
+              hype = HYPE_MAX;
+              emitHype();
+              setPrompt('[debug] Hype filled — X = BAND PERFORMANCE!');
+              return;
+            }
+            if (payload.shiftKey && phase === 'playerTurn' && payload.code === 'KeyK' && enemy) {
+              enemy.takeDamage(enemy.hp);
+              emitHp('enemy');
+              checkVictory();
+              return;
+            }
+
             if (payload.code === 'Escape') {
               if (rhythm) {
                 rhythm.stop();

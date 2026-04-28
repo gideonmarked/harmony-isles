@@ -57,13 +57,25 @@ class InputManager {
     if (this.#pressed.has(e.code)) return; // ignore OS auto-repeat
     this.#pressed.add(e.code);
     this.#justPressed.add(e.code);
-    eventBus.emit('input.keyDown', { code: e.code });
+    eventBus.emit('input.keyDown', {
+      code: e.code,
+      shiftKey: e.shiftKey,
+      ctrlKey: e.ctrlKey,
+      altKey: e.altKey,
+      metaKey: e.metaKey,
+    });
   };
 
   /** @param {KeyboardEvent} e */
   #onKeyUp = (e) => {
     this.#pressed.delete(e.code);
-    eventBus.emit('input.keyUp', { code: e.code });
+    eventBus.emit('input.keyUp', {
+      code: e.code,
+      shiftKey: e.shiftKey,
+      ctrlKey: e.ctrlKey,
+      altKey: e.altKey,
+      metaKey: e.metaKey,
+    });
   };
 
   #onBlur = () => {
