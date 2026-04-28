@@ -122,7 +122,30 @@ class RhythmUI {
         #rhythm-ui .flash.perfect { color: #ffd84a; text-shadow: 0 0 8px rgba(255,216,74,0.7); }
         #rhythm-ui .flash.good    { color: #6ec1ff; }
         #rhythm-ui .flash.miss    { color: #e85a5a; }
+        #rhythm-ui .flash.critical {
+          color: #fff2a8;
+          font-size: 18px;
+          text-shadow: 0 0 12px rgba(255, 200, 80, 0.95), 0 0 4px rgba(255, 255, 255, 0.8);
+        }
+        #rhythm-ui .streak {
+          position: absolute;
+          left: 50%; bottom: ${160 + LANE_HEIGHT + 18}px;
+          transform: translate(-50%, 0) scale(1);
+          font-size: 22px; font-weight: 800; letter-spacing: 2px;
+          color: #ffd84a;
+          text-shadow: 0 0 12px rgba(255, 216, 74, 0.55);
+          opacity: 0; transition: opacity 200ms ease-out;
+          pointer-events: none;
+        }
+        #rhythm-ui .streak.show { opacity: 1; }
+        #rhythm-ui .streak.bump { animation: streak-bump 240ms ease-out 1; }
+        @keyframes streak-bump {
+          0%   { transform: translate(-50%, 0) scale(1.0); }
+          40%  { transform: translate(-50%, 0) scale(1.25); }
+          100% { transform: translate(-50%, 0) scale(1.0); }
+        }
       </style>
+      <div class="streak" data-bind="streak"></div>
       <div class="stage">
         ${LANE_LABELS.map(
           (lab, i) => /* html */ `
@@ -147,13 +170,16 @@ class RhythmUI {
     this.#unsubs.push(
       eventBus.on(
         'rhythm.noteJudged',
-        /** @param {{ lane: number, grade: 'perfect'|'good'|'miss' }} p */
-        (p) => this.#flash(p.lane, p.grade)
+        /** @param {{ lane: number, grade: 'perfect'|'good'|'miss', streak: number, critical: boolean }} p */
+        (p) => {
+          this.#flash(p.lane, p.grade, p.critical);
+          this.#updateStreak(p.streak);
+        }
       ),
       eventBus.on(
         'rhythm.strayPress',
         /** @param {{ lane: number }} p */
-        (p) => this.#flash(p.lane, 'miss')
+        (p) => this.#flash(p.lane, 'miss', false)
       )
     );
   }
@@ -211,15 +237,37 @@ class RhythmUI {
     this.#flashEls = [];
   }
 
-  /** @param {number} lane @param {'perfect'|'good'|'miss'} grade */
-  #flash(lane, grade) {
+  /**
+   * @param {number} lane
+   * @param {'perfect'|'good'|'miss'} grade
+   * @param {boolean} critical
+   */
+  #flash(lane, grade, critical) {
     const el = this.#flashEls[lane];
     if (!el) return;
-    el.textContent = grade.toUpperCase();
-    el.className = `flash ${grade} show`;
+    el.textContent = critical ? 'CRIT!' : grade.toUpperCase();
+    const classes = critical ? `flash ${grade} critical show` : `flash ${grade} show`;
+    el.className = classes;
     // Force reflow so the next class change re-triggers the transition.
     void el.offsetWidth;
-    el.className = `flash ${grade}`;
+    el.className = critical ? `flash ${grade} critical` : `flash ${grade}`;
+  }
+
+  /** @param {number} streak */
+  #updateStreak(streak) {
+    const el = /** @type {HTMLElement | null} */ (
+      this.#root?.querySelector('[data-bind="streak"]') ?? null
+    );
+    if (!el) return;
+    if (streak >= 3) {
+      el.textContent = `STREAK x${streak}`;
+      el.classList.add('show');
+      el.classList.remove('bump');
+      void el.offsetWidth;
+      el.classList.add('bump');
+    } else {
+      el.classList.remove('show', 'bump');
+    }
   }
 }
 

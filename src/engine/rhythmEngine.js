@@ -34,11 +34,13 @@ import { eventBus } from './eventBus.js';
  * @property {boolean} resolved
  * @property {HitGrade | null} grade
  * @property {number | null} hitDeltaMs   Signed (negative = early, positive = late).
+ * @property {boolean} critical          True iff hit landed within CRIT_WINDOW_MS.
  *
  * @typedef {object} RhythmResult
  * @property {number} perfect
  * @property {number} good
  * @property {number} miss
+ * @property {number} criticals    Subset of perfects landed inside the crit window.
  * @property {number} totalNotes
  * @property {number} accuracy     Weighted [0..1]: perfect=1.0, good=0.5, miss=0.
  * @property {number} maxStreak
@@ -64,6 +66,13 @@ import { eventBus } from './eventBus.js';
 export const PERFECT_WINDOW_MS = 90;
 export const GOOD_WINDOW_MS = 200;
 
+/**
+ * Sub-window inside Perfect that promotes a hit to a Critical. Doc §22
+ * specifies critical hits exist but does not lock the trigger; using
+ * dead-center timing makes it skill-based.
+ */
+export const CRIT_WINDOW_MS = 30;
+
 /** Default lane → key code binding (4 lanes, home-row friendly). */
 export const LANE_KEYS = ['KeyD', 'KeyF', 'KeyJ', 'KeyK'];
 
@@ -81,11 +90,13 @@ export function startRhythm(pattern, clockFn) {
     resolved: false,
     grade: null,
     hitDeltaMs: null,
+    critical: false,
   }));
 
   let perfect = 0;
   let good = 0;
   let miss = 0;
+  let criticals = 0;
   let streak = 0;
   let maxStreak = 0;
   let stopped = false;
@@ -102,9 +113,15 @@ export function startRhythm(pattern, clockFn) {
     ln.resolved = true;
     ln.grade = grade;
     ln.hitDeltaMs = deltaMs;
+
+    const isCritical =
+      grade === 'perfect' && deltaMs !== null && Math.abs(deltaMs) <= CRIT_WINDOW_MS;
+    ln.critical = isCritical;
+
     if (grade === 'perfect') {
       perfect += 1;
       streak += 1;
+      if (isCritical) criticals += 1;
     } else if (grade === 'good') {
       good += 1;
       streak += 1;
@@ -118,6 +135,7 @@ export function startRhythm(pattern, clockFn) {
       grade,
       deltaMs,
       streak,
+      critical: isCritical,
     });
   }
 
@@ -202,6 +220,7 @@ export function startRhythm(pattern, clockFn) {
       perfect,
       good,
       miss,
+      criticals,
       totalNotes,
       accuracy,
       maxStreak,

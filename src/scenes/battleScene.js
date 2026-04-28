@@ -34,6 +34,7 @@ export const battleScene = (() => {
   const HYPE_MAX = 100;
   const PERFORM_BASE_DAMAGE = 20;
   const PERFORM_ACCURACY_DAMAGE = 60;
+  const PERFORM_CRIT_DAMAGE = 5;
   const PERFORM_BASE_HYPE = 15;
   const PERFORM_ACCURACY_HYPE = 25;
   const BAND_PERFORMANCE_DAMAGE_MULT = 2.0;
@@ -155,7 +156,9 @@ export const battleScene = (() => {
     phase = 'resolving';
 
     const baseDamage =
-      PERFORM_BASE_DAMAGE + result.accuracy * PERFORM_ACCURACY_DAMAGE;
+      PERFORM_BASE_DAMAGE +
+      result.accuracy * PERFORM_ACCURACY_DAMAGE +
+      result.criticals * PERFORM_CRIT_DAMAGE;
     const damage = Math.round(bp ? baseDamage * BAND_PERFORMANCE_DAMAGE_MULT : baseDamage);
     enemy.takeDamage(damage);
     emitHp('enemy');
@@ -193,8 +196,10 @@ export const battleScene = (() => {
           : 'ROUGH';
     const hypeText = bp ? 'Hype consumed' : `+${hypeGain} Hype`;
     const prefix = bp ? 'ENCORE! ' : '';
+    const critText = result.criticals > 0 ? ` · ${result.criticals} crit` : '';
+    const streakText = result.maxStreak >= 3 ? ` · max streak ${result.maxStreak}` : '';
     setPrompt(
-      `${prefix}${grade} — ${result.perfect}P / ${result.good}G / ${result.miss}M · ${damage} dmg · ${hypeText}`
+      `${prefix}${grade} — ${result.perfect}P / ${result.good}G / ${result.miss}M${critText} · ${damage} dmg · ${hypeText}${streakText}`
     );
 
     delay(
