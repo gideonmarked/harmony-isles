@@ -35,15 +35,43 @@ export const battleScene = (() => {
   /** @typedef {'introducing' | 'playerTurn' | 'itemMenu' | 'songMenu' | 'performing' | 'resolving' | 'enemyTurn' | 'gameOver'} BattlePhase */
 
   const HYPE_MAX = 100;
-  const PERFORM_BASE_DAMAGE = 20;
-  const PERFORM_ACCURACY_DAMAGE = 60;
-  const PERFORM_CRIT_DAMAGE = 5;
   const PERFORM_BASE_HYPE = 15;
   const PERFORM_ACCURACY_HYPE = 25;
-  const DEFEND_DAMAGE_MULT = 0.5;
   const DEFEND_HYPE_GAIN = 6;
   const DEFEND_DELAY_MS = 350;
-  const ENEMY_PERFORM_DAMAGE = { min: 8, max: 14 };
+  const ENEMY_PERFORM_POWER = 1.0;
+
+  /**
+   * §14.3 accuracy multiplier table. 100% accuracy *also* triggers the
+   * 1.5x criticalMultiplier (applied separately) for a 3.0x net.
+   *
+   * @param {number} acc  0..1
+   * @returns {number}
+   */
+  function accuracyMultiplier(acc) {
+    const pct = acc * 100;
+    if (pct >= 100) return 2.0;
+    if (pct >= 80) return 1.5;
+    if (pct >= 50) return 1.2;
+    if (pct >= 1) return 1.0;
+    return 0.5;
+  }
+
+  /**
+   * §15.1 confidence defense — `1 + target.confidence_stat / 50`,
+   * doubled when the target is defending.
+   *
+   * @param {Character} target
+   */
+  function confidenceDefense(target) {
+    const base = 1 + (target.stats.confidence ?? 0) / 50;
+    return target.isDefending ? base * 2 : base;
+  }
+
+  /** ±5% jitter per §15.1. Math.random is fine for slice scope. */
+  function damageJitter() {
+    return 0.95 + Math.random() * 0.10;
+  }
   const RESOLVE_DELAY_MS = 600;
   const BAND_PERFORMANCE_RESOLVE_DELAY_MS = 1200;
   const ENEMY_TURN_DELAY_MS = 800;
@@ -287,9 +315,12 @@ export const battleScene = (() => {
     }
 
     rhythmStartMs = performance.now();
+    // Technicality widens the Perfect window per §1.3. Rank 1 stats
+    // sit in the 9-13 band with median 11, so we baseline against 11
+    // rather than 5 and add 2 ms per point above.
     const tech = player.stats.technicality;
-    const perfectWindowBonusMs = (tech - 5) * 3;
-    const critWindowBonusMs = Math.max(0, Math.floor((tech - 5) * 1.5));
+    const perfectWindowBonusMs = (tech - 11) * 2;
+    const critWindowBonusMs = Math.max(0, Math.floor((tech - 11) * 1));
     rhythm = startRhythm(
       pattern,
       () => (performance.now() - rhythmStartMs) / 1000,
@@ -322,15 +353,14 @@ export const battleScene = (() => {
 
     phase = 'resolving';
 
-    // Manager Style multiplier (design doc §21.4 stacking, applied
-    // last over the rest of the formula). Effects map keys are
-    // documented in src/configs/managerStyles.json.
+    // §15.1 full damage formula. Components missing from the slice
+    // (equipmentBonus, rarityMultiplier) default to 1.0 — they slot in
+    // unchanged when those systems land.
     const fx = getState().manager.style?.effects ?? {};
 
-    // Pick the scaling stat off the active song per §15. "mixed"
-    // averages Groove and Creativity (§16.1 maps Final Encore to
-    // mixed). Visionary's creativityStatMult (1.15) and item buffs
-    // layer multiplicatively per §21.4.
+    // scaleStat — pick the stat named in song.scalesOff per §15. "mixed"
+    // averages Groove and Creativity (Final Encore). Visionary's
+    // creativityStatMult and item buffs stack per §21.4.
     const scalesOff = currentSong?.scalesOff ?? 'creativity';
     const baseStat = (() => {
       if (scalesOff === 'mixed') {
@@ -340,38 +370,54 @@ export const battleScene = (() => {
     })();
     const styleStatMult = scalesOff === 'creativity' ? (fx.creativityStatMult ?? 1) : 1;
     const buffMult = player.statBuffs[scalesOff] ?? 1;
-    const effectiveStat = baseStat * styleStatMult * buffMult;
-    const statCurveMult = Math.max(0.5, 1 + (effectiveStat - 5) * 0.05);
+    const scaleStat = baseStat * styleStatMult * buffMult;
 
-    // Song.power is the §16.1 multiplier (1.0 Neon Riff … 2.4 Final
-    // Encore). Replaces the old hardcoded BP multiplier — the BP
-    // boost lives entirely in the Final Encore song's power value
-    // plus Showrunner's bonus.
+    // accuracyMultiplier from §14.3 table; criticalMultiplier from §22
+    // is 1.5x on 100% accuracy, 1.0x otherwise.
+    const accMult = accuracyMultiplier(result.accuracy);
+    const critMult = result.flawless ? 1.5 : 1.0;
+
+    // statusBuffMultiplier — Coach's damageMult (0.9) plus any future
+    // status buffs/debuffs. Showrunner's BP bonus is applied below
+    // separately per §16.1 framing.
+    let statusBuffMult = fx.damageMult ?? 1;
+    if (bp) statusBuffMult *= fx.bandPerformanceDamageMult ?? 1;
+
     const songPower = currentSong?.power ?? 1.0;
+    const isHeal = currentSong?.type === 'heal';
+    // Heal songs target the band's own confidence (no defense divisor)
+    // per §16.4.1; attack/debuff/BP songs target the rival's defense.
+    const defense = isHeal ? 1 : confidenceDefense(enemy);
 
-    let baseDamage =
-      (PERFORM_BASE_DAMAGE +
-        result.accuracy * PERFORM_ACCURACY_DAMAGE +
-        result.criticals * PERFORM_CRIT_DAMAGE) *
-      statCurveMult *
-      songPower;
+    const rawDamage =
+      (songPower *
+        scaleStat *
+        accMult *
+        critMult *
+        statusBuffMult *
+        damageJitter()) /
+      defense;
+    const damage = Math.max(1, Math.round(rawDamage));
 
-    // Coach: -10% damage across the board.
-    baseDamage *= fx.damageMult ?? 1;
-
-    // Showrunner: +15% damage when the active song is a Band Performance.
-    if (bp) baseDamage *= fx.bandPerformanceDamageMult ?? 1;
-
-    const damage = Math.round(baseDamage);
     player.playAttack();
-    enemy.takeDamage(damage);
-    emitHp('enemy');
-    eventBus.emit('battle.damageDealt', {
-      from: player.id,
-      to: enemy.id,
-      amount: damage,
-      bandPerformance: bp,
-    });
+    if (isHeal) {
+      const { before, after } = player.heal(damage);
+      emitHp('player');
+      eventBus.emit('battle.healed', {
+        from: player.id,
+        to: player.id,
+        amount: after - before,
+      });
+    } else {
+      enemy.takeDamage(damage);
+      emitHp('enemy');
+      eventBus.emit('battle.damageDealt', {
+        from: player.id,
+        to: enemy.id,
+        amount: damage,
+        bandPerformance: bp,
+      });
+    }
 
     let hypeGain;
     if (bp) {
@@ -403,10 +449,11 @@ export const battleScene = (() => {
           : 'ROUGH';
     const hypeText = bp ? 'Hype consumed' : `+${hypeGain} Hype`;
     const prefix = bp ? 'ENCORE! ' : '';
-    const critText = result.criticals > 0 ? ` · ${result.criticals} crit` : '';
+    const critText = result.criticals > 0 ? ` · ${result.criticals} bull's-eye` : '';
     const streakText = result.maxStreak >= 3 ? ` · max streak ${result.maxStreak}` : '';
+    const effectText = isHeal ? `+${damage} Confidence` : `${damage} dmg`;
     setPrompt(
-      `${prefix}${grade} — ${result.perfect}P / ${result.good}G / ${result.miss}M${critText} · ${damage} dmg · ${hypeText}${streakText}`
+      `${prefix}${grade} — ${result.perfect}P/${result.good}G/${result.okay}O/${result.miss}M${critText} · ${effectText} · ${hypeText}${streakText}`
     );
 
     delay(
@@ -425,10 +472,12 @@ export const battleScene = (() => {
 
     delay(() => {
       if (!player || !enemy) return;
+      // §15.1 formula simplified for the rival (no rhythm minigame
+      // for them, so accuracy is fixed at the 50-79% band ~1.2x).
       const rawDmg =
-        ENEMY_PERFORM_DAMAGE.min +
-        Math.floor(Math.random() * (ENEMY_PERFORM_DAMAGE.max - ENEMY_PERFORM_DAMAGE.min + 1));
-      const dmg = player.isDefending ? Math.max(1, Math.round(rawDmg * DEFEND_DAMAGE_MULT)) : rawDmg;
+        (ENEMY_PERFORM_POWER * enemy.stats.groove * 1.2 * damageJitter()) /
+        confidenceDefense(player);
+      const dmg = Math.max(1, Math.round(rawDmg));
       enemy.playAttack();
       player.takeDamage(dmg);
       emitHp('player');
@@ -447,17 +496,18 @@ export const battleScene = (() => {
     enter(ctx) {
       group = new THREE.Group();
 
-      // Per design doc §9 (stat curves per role) characters have
-      // varying stats; the slice tunes the player's defaults around
-      // 7 to give Technicality / Creativity a visible effect on
-      // Perfect window and damage scaling vs the Rival.
+      // Rank 1 stat curves per design doc §9.2:
+      //   Guitarist  Tech 12  Focus 10  Groove 14  Conf  9  Creat 11  Energy 10
+      //   Drummer    Tech 11  Focus 12  Groove 13  Conf 11  Creat  8  Energy 13
+      // Confidence Max formula §9.1: round((100 + 15*(rank-1)) * rarityMult
+      // + confidence_stat * 2). Rank 1 common: 100 + conf*2.
       player = new Character({
         id: 'p1',
         name: 'Player',
         isPlayer: true,
-        stats: { technicality: 7, focus: 6, groove: 6, confidence: 7, creativity: 8, energy: 6 },
-        hpMax: 100,
-        mpMax: 50,
+        stats: { technicality: 12, focus: 10, groove: 14, confidence: 9, creativity: 11, energy: 10 },
+        hpMax: Math.round(100 + 9 * 2),
+        mpMax: Math.round(50 + 10 * 1.5),
       });
       player.setBasePosition(-2, 0.8, 0);
       group.add(player.mesh);
@@ -466,9 +516,9 @@ export const battleScene = (() => {
         id: 'e1',
         name: 'Rival',
         isPlayer: false,
-        stats: { technicality: 4, focus: 5, groove: 5, confidence: 5, creativity: 4, energy: 4 },
-        hpMax: 80,
-        mpMax: 30,
+        stats: { technicality: 11, focus: 12, groove: 13, confidence: 11, creativity: 8, energy: 13 },
+        hpMax: Math.round(100 + 11 * 2),
+        mpMax: Math.round(50 + 13 * 1.5),
       });
       enemy.setBasePosition(2, 0.8, 0);
       group.add(enemy.mesh);

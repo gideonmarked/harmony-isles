@@ -121,6 +121,7 @@ class RhythmUI {
         #rhythm-ui .flash.show { opacity: 1; transition: opacity 0ms; }
         #rhythm-ui .flash.perfect { color: #ffd84a; text-shadow: 0 0 8px rgba(255,216,74,0.7); }
         #rhythm-ui .flash.good    { color: #6ec1ff; }
+        #rhythm-ui .flash.okay    { color: #a5b3c6; }
         #rhythm-ui .flash.miss    { color: #e85a5a; }
         #rhythm-ui .flash.critical {
           color: #fff2a8;
@@ -170,7 +171,7 @@ class RhythmUI {
     this.#unsubs.push(
       eventBus.on(
         'rhythm.noteJudged',
-        /** @param {{ lane: number, grade: 'perfect'|'good'|'miss', streak: number, critical: boolean }} p */
+        /** @param {{ lane: number, grade: 'perfect'|'good'|'okay'|'miss', streak: number, critical: boolean }} p */
         (p) => {
           this.#flash(p.lane, p.grade, p.critical);
           this.#updateStreak(p.streak);
@@ -239,7 +240,7 @@ class RhythmUI {
 
   /**
    * @param {number} lane
-   * @param {'perfect'|'good'|'miss'} grade
+   * @param {'perfect'|'good'|'okay'|'miss'} grade
    * @param {boolean} critical
    */
   #flash(lane, grade, critical) {

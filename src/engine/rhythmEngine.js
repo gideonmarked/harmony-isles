@@ -15,7 +15,7 @@ import { eventBus } from './eventBus.js';
  * clock that stays in lockstep with the audio output device).
  */
 
-/** @typedef {'perfect' | 'good' | 'miss'} HitGrade */
+/** @typedef {'perfect' | 'good' | 'okay' | 'miss'} HitGrade */
 
 /**
  * @typedef {object} Note
@@ -39,10 +39,11 @@ import { eventBus } from './eventBus.js';
  * @typedef {object} RhythmResult
  * @property {number} perfect
  * @property {number} good
+ * @property {number} okay
  * @property {number} miss
  * @property {number} criticals    Subset of perfects landed inside the crit window.
  * @property {number} totalNotes
- * @property {number} accuracy     Weighted [0..1]: perfect=1.0, good=0.5, miss=0.
+ * @property {number} accuracy     Weighted [0..1]: perfect=1.0, good=0.7, okay=0.4, miss=0 (per §14.3).
  * @property {number} maxStreak
  * @property {number} finalStreak
  * @property {boolean} flawless    True iff every note was perfect.
@@ -58,18 +59,21 @@ import { eventBus } from './eventBus.js';
  */
 
 /**
- * Hit windows in milliseconds. Slightly more forgiving than the design
- * doc's 60/120 default so the slice is approachable to judges who
- * aren't rhythm-game players. Tighten back toward 60/120 in a feel
- * pass once the audience is calibrated.
+ * Hit windows in milliseconds. The doc's reference values are 60/120;
+ * we run at 90/170/260 (perfect / good / okay) so the slice is
+ * approachable to judges. Beyond OKAY_WINDOW_MS the note is a miss.
+ *
+ * The four-tier scheme matches §14.3 (perfect/good/okay/miss).
  */
 export const PERFECT_WINDOW_MS = 90;
-export const GOOD_WINDOW_MS = 200;
+export const GOOD_WINDOW_MS = 170;
+export const OKAY_WINDOW_MS = 260;
 
 /**
- * Sub-window inside Perfect that promotes a hit to a Critical. Doc §22
- * specifies critical hits exist but does not lock the trigger; using
- * dead-center timing makes it skill-based.
+ * Sub-window inside Perfect that promotes a hit to a "Bull's-eye"
+ * Perfect. Provides a per-note feedback hook; the doc's §22 critical
+ * multiplier is computed at the song level (1.5x on 100% accuracy)
+ * by battleScene, not here.
  */
 export const CRIT_WINDOW_MS = 30;
 
@@ -97,6 +101,7 @@ export function startRhythm(pattern, clockFn, modifiers) {
     CRIT_WINDOW_MS + (modifiers?.critWindowBonusMs ?? 0)
   );
   const goodWindow = Math.max(GOOD_WINDOW_MS, perfectWindow);
+  const okayWindow = Math.max(OKAY_WINDOW_MS, goodWindow);
   /** @type {LiveNote[]} */
   const liveNotes = pattern.notes.map((note) => ({
     note,
@@ -108,6 +113,7 @@ export function startRhythm(pattern, clockFn, modifiers) {
 
   let perfect = 0;
   let good = 0;
+  let okay = 0;
   let miss = 0;
   let criticals = 0;
   let streak = 0;
@@ -118,6 +124,7 @@ export function startRhythm(pattern, clockFn, modifiers) {
   function gradeForDelta(absDeltaMs) {
     if (absDeltaMs <= perfectWindow) return 'perfect';
     if (absDeltaMs <= goodWindow) return 'good';
+    if (absDeltaMs <= okayWindow) return 'okay';
     return 'miss';
   }
 
@@ -137,6 +144,11 @@ export function startRhythm(pattern, clockFn, modifiers) {
       if (isCritical) criticals += 1;
     } else if (grade === 'good') {
       good += 1;
+      streak += 1;
+    } else if (grade === 'okay') {
+      okay += 1;
+      // Streak survives an Okay (rhythm-game convention) — only a
+      // missed note resets it. Tunable post-hackathon.
       streak += 1;
     } else {
       miss += 1;
@@ -158,7 +170,7 @@ export function startRhythm(pattern, clockFn, modifiers) {
     for (const ln of liveNotes) {
       if (ln.resolved) continue;
       const deltaMs = (t - ln.note.time) * 1000;
-      if (deltaMs > goodWindow) {
+      if (deltaMs > okayWindow) {
         resolveNote(ln, 'miss', null);
       }
     }
@@ -183,7 +195,7 @@ export function startRhythm(pattern, clockFn, modifiers) {
       if (ln.resolved) continue;
       if (ln.note.lane !== lane) continue;
       const deltaMs = (t - ln.note.time) * 1000;
-      if (deltaMs < -goodWindow || deltaMs > goodWindow) continue;
+      if (deltaMs < -okayWindow || deltaMs > okayWindow) continue;
       const abs = Math.abs(deltaMs);
       if (abs < bestAbsDelta) {
         bestAbsDelta = abs;
@@ -227,11 +239,16 @@ export function startRhythm(pattern, clockFn, modifiers) {
 
   function getResult() {
     const totalNotes = pattern.notes.length;
+    // Per design doc §14.3:
+    // accuracy = (perfects×1.0 + goods×0.7 + okays×0.4 + misses×0) / total
     const accuracy =
-      totalNotes === 0 ? 0 : (perfect * 1.0 + good * 0.5) / totalNotes;
+      totalNotes === 0
+        ? 0
+        : (perfect * 1.0 + good * 0.7 + okay * 0.4) / totalNotes;
     return {
       perfect,
       good,
+      okay,
       miss,
       criticals,
       totalNotes,
