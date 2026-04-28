@@ -21,10 +21,18 @@ import * as THREE from 'three';
  * @property {THREE.ColorRepresentation} [color]   placeholder quad color
  */
 
+const IDLE_AMPLITUDE = 0.05;
+const IDLE_FREQ = 2.4;
+const ATTACK_DURATION_MS = 380;
+const ATTACK_LUNGE = 0.9;
+const KO_DURATION_S = 0.42;
+const KO_DROP = 0.55;
+
 /**
- * Battle participant. Owns the gameplay state (HP/MP, stats) and a
- * placeholder Three.js mesh that real Aseprite sprites swap in for
- * later.
+ * Battle participant. Owns the gameplay state (HP/MP, stats), a
+ * placeholder Three.js mesh that real Aseprite sprites swap in for,
+ * and a small animation state machine (idle bob, attack lunge, KO
+ * collapse) per design doc §28-29.
  */
 export class Character {
   /** @param {CharacterInit} init */
@@ -45,6 +53,30 @@ export class Character {
       })
     );
     this.mesh.position.y = 0.8;
+
+    /** Rest position the animation system perturbs around. */
+    this.basePosition = { x: 0, y: 0.8, z: 0 };
+
+    /** Phase offset so multiple characters don't bob in lockstep. */
+    this.idleTime = Math.random() * Math.PI * 2;
+
+    /** Counts down from ATTACK_DURATION_MS during a lunge. */
+    this.attackTimer = 0;
+
+    /** Counts up to KO_DURATION_S after KO triggers. */
+    this.koTimer = 0;
+  }
+
+  /**
+   * Set the character's rest position. The animation system perturbs
+   * around this anchor each frame, so callers must use this rather
+   * than writing `mesh.position` directly.
+   *
+   * @param {number} x @param {number} y @param {number} z
+   */
+  setBasePosition(x, y, z) {
+    this.basePosition = { x, y, z };
+    this.mesh.position.set(x, y, z);
   }
 
   /**
@@ -57,6 +89,48 @@ export class Character {
     const before = this.hp;
     this.hp = Math.max(0, this.hp - Math.max(0, Math.floor(amount)));
     return { before, after: this.hp, ko: this.hp === 0 };
+  }
+
+  /** Trigger the attack-lunge animation. */
+  playAttack() {
+    this.attackTimer = ATTACK_DURATION_MS;
+  }
+
+  /**
+   * Advance idle / attack / KO animations. Call once per frame
+   * regardless of phase so the bob keeps going during dialogue.
+   *
+   * @param {number} dt  Seconds since last frame.
+   */
+  update(dt) {
+    this.idleTime += dt;
+
+    let attackX = 0;
+    if (this.attackTimer > 0) {
+      this.attackTimer = Math.max(0, this.attackTimer - dt * 1000);
+      const progress = 1 - this.attackTimer / ATTACK_DURATION_MS;
+      attackX = Math.sin(progress * Math.PI) * ATTACK_LUNGE * (this.isPlayer ? 1 : -1);
+    }
+
+    if (this.isKO) {
+      this.koTimer = Math.min(KO_DURATION_S, this.koTimer + dt);
+      const k = this.koTimer / KO_DURATION_S;
+      this.mesh.rotation.z = (-Math.PI / 2) * k * (this.isPlayer ? 1 : -1);
+      this.mesh.position.set(
+        this.basePosition.x + attackX,
+        this.basePosition.y - KO_DROP * k,
+        this.basePosition.z
+      );
+      return;
+    }
+
+    this.mesh.rotation.z = 0;
+    const idleY = Math.sin(this.idleTime * IDLE_FREQ) * IDLE_AMPLITUDE;
+    this.mesh.position.set(
+      this.basePosition.x + attackX,
+      this.basePosition.y + idleY,
+      this.basePosition.z
+    );
   }
 
   get isKO() {

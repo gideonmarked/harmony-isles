@@ -177,6 +177,7 @@ export const battleScene = (() => {
         result.criticals * PERFORM_CRIT_DAMAGE) *
       creativityMult;
     const damage = Math.round(bp ? baseDamage * BAND_PERFORMANCE_DAMAGE_MULT : baseDamage);
+    player.playAttack();
     enemy.takeDamage(damage);
     emitHp('enemy');
     eventBus.emit('battle.damageDealt', {
@@ -238,6 +239,7 @@ export const battleScene = (() => {
       const dmg =
         ENEMY_PERFORM_DAMAGE.min +
         Math.floor(Math.random() * (ENEMY_PERFORM_DAMAGE.max - ENEMY_PERFORM_DAMAGE.min + 1));
+      enemy.playAttack();
       player.takeDamage(dmg);
       emitHp('player');
       eventBus.emit('battle.damageDealt', { from: enemy.id, to: player.id, amount: dmg });
@@ -265,7 +267,7 @@ export const battleScene = (() => {
         hpMax: 100,
         mpMax: 50,
       });
-      player.mesh.position.set(-2, 0.8, 0);
+      player.setBasePosition(-2, 0.8, 0);
       group.add(player.mesh);
 
       enemy = new Character({
@@ -276,7 +278,7 @@ export const battleScene = (() => {
         hpMax: 80,
         mpMax: 30,
       });
-      enemy.mesh.position.set(2, 0.8, 0);
+      enemy.setBasePosition(2, 0.8, 0);
       group.add(enemy.mesh);
 
       ctx.scene.add(group);
@@ -377,7 +379,12 @@ export const battleScene = (() => {
       }, 1100);
     },
 
-    update() {
+    update(dt) {
+      // Idle bob / attack lunge / KO collapse animations run every
+      // frame regardless of phase so characters always feel alive.
+      player?.update(dt);
+      enemy?.update(dt);
+
       if (phase !== 'performing' || !rhythm) return;
       rhythm.tick();
       rhythmUI.update();
