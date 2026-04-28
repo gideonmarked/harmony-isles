@@ -47,19 +47,14 @@ export function createRenderer(mount) {
   sun.position.set(10, 20, 5);
   scene.add(sun);
 
+  // Ground tile — placeholder arena floor. Real tilemaps drop in
+  // here when island art is authored.
   const tile = new THREE.Mesh(
-    new THREE.PlaneGeometry(4, 4),
+    new THREE.PlaneGeometry(8, 6),
     new THREE.MeshStandardMaterial({ color: 0x4a7a5e })
   );
   tile.rotation.x = -Math.PI / 2;
   scene.add(tile);
-
-  const cube = new THREE.Mesh(
-    new THREE.BoxGeometry(0.6, 0.6, 0.6),
-    new THREE.MeshStandardMaterial({ color: 0xe85a5a })
-  );
-  cube.position.y = 0.3;
-  scene.add(cube);
 
   function resize() {
     const w = window.innerWidth;
