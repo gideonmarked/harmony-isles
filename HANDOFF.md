@@ -148,22 +148,71 @@ The asset-loading fallback (per §27) is not implemented yet — when a sprite i
 - [ ] README's AI-usage note still accurate (currently states "≥90 % AI-generated, commit history is the audit trail")
 - [ ] Submission form filled with repo URL + video link before May 1 cutoff
 
-## Out of scope (deliberately deferred — design-doc explicit)
+## Held off
 
-These are **post-slice** per the doc's own phasing. Architecture is wired for each so adding them is content/integration, not a refactor.
+Doc-explicit features that are not in this build, organized by category. Most are explicit post-slice per the doc itself; none are regressions. Listed so the gap is legible at a glance.
 
-| Feature | Doc § | Status |
-| --- | --- | --- |
-| Audio offset calibration sub-mode | §32 | UI not built; constant in `main.json` is the manual lever |
-| Tutorial flow | §32 | Prompt strings exist (`battle.promptChanged`); no scripted intro |
-| Personality system (8 personalities) | §8.2 | Data slot on Character would land cleanly; not started |
-| Save system (3 LocalStorage profiles) | §26 | Game state is reducer-shaped so serialization is straightforward; not started |
-| Overworld walking | §3 | Not in slice scope |
-| Encounter system on islands | §12 | Random rival pick approximates the encounter table |
-| Shop / Notes economy | §25 | Hustler / Mentor effects sit dormant pending this |
-| Recruitment + chemistry | §24, §8.3 | Mentor's recruitment effects sit dormant |
-| Equipment (25 instruments) | §19 | `equipmentBonus` defaults to 1.0 in the damage chain |
-| Rarity multiplier on damage | §15.1 | Defaults to 1.0; `rarityMultiplierFor` exists for rivals only |
+### Asset-blocked
+- Music — songs exist as note patterns in `src/configs/songs.json`; no audio files yet.
+- SFX — hit / miss / KO / victory tones not registered.
+- Sprites — characters are colored boxes, ground is a green plane.
+- Aseprite frame animations — code has hooks (idle bob, attack lunge, KO drop) but cycles a `BoxGeometry` rather than real frames.
+
+### Doc-spec systems not in this build
+
+| Feature | Doc § |
+| --- | --- |
+| Overworld walking, 10 themed islands + 1 shop island | §3 + §6 |
+| Random encounter system (rarity-tiered telegraphs, pity floor) | §12 + §23 |
+| Shop (Islands / Instruments / Items / Songs tabs, buy/sell) | §25 |
+| Save system (3 LocalStorage profiles) | §26 |
+| Recruitment math (join chance, recruitment roll) | §24 |
+| Chemistry tracking + scripted reveal | §8.3 |
+| 8 Personalities with stat / Hype effects | §8.2 |
+| 25 Instruments (5 categories × 5 tiers) | §19 |
+| Manager Journal + 7 demo quests | §2.3 |
+| Tutorial flow | §32 |
+| Practice Mode + audio offset calibration sub-mode | §32 |
+| 15 character designs (3 per role) | §7.1 (slice has 5 rivals, 1 per role) |
+| Random naming generator | §7.3 |
+| Per-character rarity visuals (glow / halo / particles) | §7.2 |
+| Day / night cycle visuals | §33.5 |
+| Defeat dialogue tables in `en.json` | §32 (slice has inline lines, no i18n) |
+
+### Battle math not in this build
+
+| Mechanic | Doc § |
+| --- | --- |
+| Dodge / evasion roll on every incoming attack | §14.4 + §22 |
+| Flee action | §33.2 (slice has Perform / Defend / Items only) |
+| Status effects (Standing Ovation, song buffs / debuffs) | §21 |
+| Multi-target song resolution (`all_band`, `all_rivals`) | §16 |
+| Echo Harmony's true `all_band` heal | §16.4.1 (heals player only — slice has one character on-side) |
+| Silent Drop debuff effect | §16.4.2 (treated as attack damage in slice) |
+| Hype critical bonus (+3 on flawless / +2 on dodge) | §22 |
+| Rarity damage multiplier in formula | §15.1 (defaults to 1.0; `rarityMultiplierFor` exists but applies only to rival stat scaling) |
+| Equipment bonus in formula | §15.1 (defaults to 1.0) |
+| Rank progression / exp / level-up | §11 (both characters fixed at rank 1) |
+
+### Manager Style effects inert in this build
+
+Stored in `src/configs/managerStyles.json` so the picker matches the doc, but their target systems aren't shipped yet:
+
+- **Hustler** — Notes earned, weekly payout, recruitment chance
+- **Mentor** — recruit chance bonus, rare+ spawn weight, Tier-3+ instrument prices
+- **Visionary** — songs cost 25 % less MP (Energy is deducted but never blocking), confidence growth slower (no inter-battle regen)
+- **Coach** — exp gain, confidence regen between battles
+- **Showrunner** — Notes earned
+
+### Hackathon-cut
+
+- Tests (no Vitest config)
+- CI (no GitHub Actions)
+- Husky / lint-staged
+- Asset-loading fallback (per §27)
+- Mod loader overlay (configs eagerly imported via `import.meta.glob`; no `/mods/` deepMerge layer)
+- Telemetry hooks
+- Bounding-box debug renderer
 
 ## Known risks
 
