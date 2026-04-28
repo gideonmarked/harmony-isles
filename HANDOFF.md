@@ -84,11 +84,11 @@ Internal handoff notes. Slice is feature-complete on the systems side. Your rema
 - Hype meter (bottom centre, pulses at full)
 - Prompt panel (action menu / round result / dialogue)
 
-## Your queue
+## Remaining work
 
-### 1. Audio integration (highest priority)
+### Audio integration
 
-Swap the rhythm engine clock from wall time to the AudioContext. **One-line change** plus song-file paths. Concrete steps:
+Swap the rhythm engine clock from wall time to the AudioContext. One-line change plus song-file paths. Concrete steps:
 
 1. Drop the song loop into `public/assets/audio/songs/finalEncore.{mp3,ogg}` (and others as you author them — file basenames should match config IDs, e.g. `neonRiff.mp3`).
 2. In `src/main.js` (or a new boot helper), call:
@@ -109,7 +109,7 @@ Swap the rhythm engine clock from wall time to the AudioContext. **One-line chan
    That makes the AudioContext clock the master per §3 / §27.
 4. Calibrate per-device offset: tweak `audio.offsetMs` in `src/configs/main.json` if the rhythm feels early/late after audio is wired. (Future work: ship the doc's offset-calibration sub-mode, §32.)
 
-### 2. SFX
+### SFX
 
 Register hit / miss / KO / victory tones in `audioManager` and trigger from EventBus subscriptions:
 
@@ -129,7 +129,7 @@ eventBus.on('battle.gameOver', ({ outcome }) => {
 });
 ```
 
-### 3. Asset slots
+### Asset slots
 
 | Slot | Path | Format | Notes |
 | --- | --- | --- | --- |
@@ -141,7 +141,7 @@ eventBus.on('battle.gameOver', ({ outcome }) => {
 
 The asset-loading fallback (per §27) is not implemented yet — when a sprite is missing the placeholder mesh stays. Add a try/catch around `TextureLoader` calls if you want the fallback to be loud.
 
-### 4. Submission packaging
+### Submission packaging
 
 - [ ] `npm run build` clean
 - [ ] Demo video (60–90 s, shows: title → style pick → battle → song select → rhythm → BP → victory dialogue)
