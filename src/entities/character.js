@@ -65,6 +65,9 @@ export class Character {
 
     /** Counts up to KO_DURATION_S after KO triggers. */
     this.koTimer = 0;
+
+    /** True between defending and the next incoming hit. Halves damage. */
+    this.isDefending = false;
   }
 
   /**

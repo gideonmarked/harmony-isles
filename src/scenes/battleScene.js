@@ -39,6 +39,9 @@ export const battleScene = (() => {
   const PERFORM_BASE_HYPE = 15;
   const PERFORM_ACCURACY_HYPE = 25;
   const BAND_PERFORMANCE_DAMAGE_MULT = 2.0;
+  const DEFEND_DAMAGE_MULT = 0.5;
+  const DEFEND_HYPE_GAIN = 6;
+  const DEFEND_DELAY_MS = 350;
   const ENEMY_PERFORM_DAMAGE = { min: 8, max: 14 };
   const RESOLVE_DELAY_MS = 600;
   const BAND_PERFORMANCE_RESOLVE_DELAY_MS = 1200;
@@ -109,11 +112,27 @@ export const battleScene = (() => {
 
   function startPlayerTurn() {
     phase = 'playerTurn';
+    if (player) player.isDefending = false;
     if (hype >= HYPE_MAX) {
-      setPrompt('Your turn — Z = Perform · X = BAND PERFORMANCE!');
+      setPrompt('Your turn — Z = Perform · X = BAND PERFORMANCE! · C = Defend');
     } else {
-      setPrompt('Your turn — press Z to perform Final Encore.');
+      setPrompt('Your turn — Z = Perform · C = Defend');
     }
+  }
+
+  function performDefend() {
+    if (!player || !enemy) return;
+    phase = 'resolving';
+    player.isDefending = true;
+
+    hype = Math.min(HYPE_MAX, hype + DEFEND_HYPE_GAIN);
+    emitHype();
+    setPrompt(`${player.name} braces for the next strike. +${DEFEND_HYPE_GAIN} Hype.`);
+
+    delay(() => {
+      if (checkVictory()) return;
+      startEnemyTurn();
+    }, DEFEND_DELAY_MS);
   }
 
   /** @param {boolean} bandPerformance */
@@ -253,13 +272,16 @@ export const battleScene = (() => {
 
     delay(() => {
       if (!player || !enemy) return;
-      const dmg =
+      const rawDmg =
         ENEMY_PERFORM_DAMAGE.min +
         Math.floor(Math.random() * (ENEMY_PERFORM_DAMAGE.max - ENEMY_PERFORM_DAMAGE.min + 1));
+      const dmg = player.isDefending ? Math.max(1, Math.round(rawDmg * DEFEND_DAMAGE_MULT)) : rawDmg;
       enemy.playAttack();
       player.takeDamage(dmg);
       emitHp('player');
       eventBus.emit('battle.damageDealt', { from: enemy.id, to: player.id, amount: dmg });
+      // Defend consumes its protection on the first hit.
+      player.isDefending = false;
 
       if (checkVictory()) return;
       startPlayerTurn();
@@ -382,6 +404,10 @@ export const battleScene = (() => {
             }
             if (phase === 'playerTurn' && payload.code === 'KeyX' && hype >= HYPE_MAX) {
               startPerform(true);
+              return;
+            }
+            if (phase === 'playerTurn' && payload.code === 'KeyC') {
+              performDefend();
               return;
             }
             if (phase === 'performing' && rhythm && LANE_KEYS.includes(payload.code)) {
