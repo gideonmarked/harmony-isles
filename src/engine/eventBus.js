@@ -36,6 +36,13 @@ class EventBus {
   /**
    * Emit an event. Errors in one handler do not stop the others.
    *
+   * Snapshots the handler set before iterating so that subscribers
+   * registered DURING dispatch (e.g. opening a UI overlay in
+   * response to a keypress) do not receive the same event that
+   * triggered them. Without this, pressing "B" to open the shop
+   * would also close it, since the shop's freshly-added handler
+   * would see the still-in-flight "B" keydown.
+   *
    * @template P
    * @param {string} event
    * @param {P} [payload]
@@ -43,7 +50,8 @@ class EventBus {
   emit(event, payload) {
     const set = this.#handlers.get(event);
     if (!set) return;
-    for (const fn of set) {
+    const snapshot = [...set];
+    for (const fn of snapshot) {
       try {
         fn(payload);
       } catch (e) {

@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run *)",
+      "PowerShell(npm run lint 2>&1)",
+      "PowerShell(Get-Command npm,node -ErrorAction SilentlyContinue)",
+      "PowerShell($env:PATH)",
+      "PowerShell(wsl which node npm)",
+      "PowerShell(wsl bash -lc \"node -v; npm -v\")",
+      "PowerShell(wsl bash -lc \"cd /home/gideonmarked/Projects/harmony-isles; ls .nvmrc; cat .nvmrc; ls ~/.nvm/versions/node 2>/dev/null; command -v nvm; type nvm 2>/dev/null\")",
+      "PowerShell(wsl bash -lc \"echo HOME=`$HOME; whoami; ls /home; ls ~ 2>/dev/null | head\")",
+      "PowerShell(wsl bash -lc \"ls ~/Projects; ls ~/Projects/harmony-isles 2>&1 | head\")",
+      "Read(//etc/**)",
+      "Bash(mount)",
+      "Bash(python -)",
+      "Bash(python -c \"import json; [print\\(p,'OK' if json.load\\(open\\(p\\)\\) else 'FAIL'\\) for p in ['src/configs/islands.json','src/configs/encounters.json','src/configs/songs.json','src/configs/items.json','src/configs/rivals.json','src/configs/managerStyles.json','src/configs/main.json']]\")"
+    ]
+  }
+}

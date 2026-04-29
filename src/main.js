@@ -6,10 +6,13 @@ import { getConfig, listConfigs } from './engine/configService.js';
 import { audioManager } from './engine/audioManager.js';
 import { inputManager } from './engine/inputManager.js';
 import { sceneManager } from './engine/sceneManager.js';
+import { saveSystem } from './engine/saveSystem.js';
 import { RNG } from './util/rng.js';
 import { createRenderer, CAMERA_BASE_POSITION } from './engine/renderer.js';
 import { isFrozen, applyShakeToCamera } from './engine/timeFx.js';
 import { titleScene } from './scenes/titleScene.js';
+import { worldMapScene } from './scenes/worldMapScene.js';
+import { exploreScene } from './scenes/exploreScene.js';
 import { battleScene } from './scenes/battleScene.js';
 
 const mount = /** @type {HTMLElement | null} */ (document.getElementById('app'));
@@ -31,10 +34,19 @@ eventBus.on('stateChanged', ({ action }) => {
 // Sanity-check: the reducer should accept a no-op without crashing.
 dispatch({ type: 'GRANT_NOTES', amount: 0 });
 
+// Save / load — read which slot was last active, hydrate it if it
+// has data, and start auto-saving on checkpoint events. Title scene
+// can override the active slot via saveSystem.loadSlot().
+saveSystem.init();
+const loaded = saveSystem.loadActive();
+saveSystem.attachAutoSave();
+window.addEventListener('beforeunload', () => saveSystem.flush());
+
 console.log('[boot]', {
   configs: listConfigs(),
   main: mainCfg,
   rngSample: rng.next(),
+  loadedSlot: loaded ? saveSystem.activeSlot : null,
 });
 
 const { renderer, scene, camera, resize } = createRenderer(mount);
@@ -42,6 +54,8 @@ const { renderer, scene, camera, resize } = createRenderer(mount);
 inputManager.attach();
 sceneManager.init({ scene, camera });
 sceneManager.register(titleScene);
+sceneManager.register(worldMapScene);
+sceneManager.register(exploreScene);
 sceneManager.register(battleScene);
 sceneManager.transition('title');
 

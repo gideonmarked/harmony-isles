@@ -5,10 +5,30 @@ import * as THREE from 'three';
 const VIEW_SIZE = 12;
 
 /**
- * Camera rest position. Exported so juice systems (screen shake) can
- * perturb around a known anchor and snap back without drifting.
+ * Camera rest position. Mutable so scenes can switch between iso
+ * (battle) and top-down (explore) without losing the screen-shake
+ * snap-back anchor — `applyShakeToCamera` reads x/y/z each frame.
  */
-export const CAMERA_BASE_POSITION = Object.freeze({ x: 20, y: 20, z: 20 });
+export const CAMERA_BASE_POSITION = { x: 20, y: 20, z: 20 };
+
+/** Default iso pose, kept verbatim so we can restore from any other pose. */
+const ISO_POSE = Object.freeze({
+  pos: { x: 20, y: 20, z: 20 },
+  up: { x: 0, y: 1, z: 0 },
+});
+
+/**
+ * Top-down pose. With up = (0, 0, -1) the world's −Z axis is "screen
+ * up", which makes WASD movement feel like N/S/E/W on a paper map:
+ * W = decrease tileY = decrease world Z = move up on screen.
+ */
+const TOP_DOWN_POSE = Object.freeze({
+  pos: { x: 0, y: 25, z: 0.0001 },
+  up: { x: 0, y: 0, z: -1 },
+});
+
+/** @type {THREE.OrthographicCamera | null} */
+let activeCamera = null;
 
 /**
  * Build a Three.js orthographic-isometric renderer with a placeholder
@@ -45,8 +65,8 @@ export function createRenderer(mount) {
     0.1,
     1000
   );
-  camera.position.set(CAMERA_BASE_POSITION.x, CAMERA_BASE_POSITION.y, CAMERA_BASE_POSITION.z);
-  camera.lookAt(0, 0, 0);
+  activeCamera = camera;
+  setCameraIso();
 
   scene.add(new THREE.AmbientLight(0xffffff, 0.6));
   const sun = new THREE.DirectionalLight(0xffffff, 0.8);
@@ -77,4 +97,33 @@ export function createRenderer(mount) {
   resize();
 
   return { renderer, scene, camera, resize };
+}
+
+/**
+ * Restore the iso pose used by the title and battle scenes. Updates
+ * both the camera transform and CAMERA_BASE_POSITION so the per-frame
+ * screen-shake reset snaps back to the right anchor.
+ */
+export function setCameraIso() {
+  applyPose(ISO_POSE);
+}
+
+/**
+ * Aim the camera straight down. Use this for explore-style scenes
+ * where WASD should map to N/S/E/W on a paper-map view.
+ */
+export function setCameraTopDown() {
+  applyPose(TOP_DOWN_POSE);
+}
+
+/** @param {{ pos: { x: number, y: number, z: number }, up: { x: number, y: number, z: number } }} pose */
+function applyPose(pose) {
+  CAMERA_BASE_POSITION.x = pose.pos.x;
+  CAMERA_BASE_POSITION.y = pose.pos.y;
+  CAMERA_BASE_POSITION.z = pose.pos.z;
+  if (!activeCamera) return;
+  activeCamera.up.set(pose.up.x, pose.up.y, pose.up.z);
+  activeCamera.position.set(pose.pos.x, pose.pos.y, pose.pos.z);
+  activeCamera.lookAt(0, 0, 0);
+  activeCamera.updateProjectionMatrix();
 }

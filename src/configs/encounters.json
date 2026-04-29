@@ -1,0 +1,37 @@
+{
+  "tiles": {
+    "wall": { "walkable": false, "encounterMult": 0 },
+    "grass": { "walkable": true, "encounterMult": 1.0 },
+    "floor_indoor": { "walkable": true, "encounterMult": 1.0 },
+    "stage": { "walkable": true, "encounterMult": 1.2 },
+    "path": { "walkable": true, "encounterMult": 0 },
+    "bridge": { "walkable": true, "encounterMult": 0 },
+    "water": { "walkable": false, "encounterMult": 0 }
+  },
+  "rolls": {
+    "baseChance": 0.05,
+    "nightMultiplier": 1.5,
+    "credBonusEvery": 10,
+    "credBonusAdditive": 0.005,
+    "credBonusCap": 0.05,
+    "pityFloorSteps": 50,
+    "postBattleCooldownSteps": 8
+  },
+  "tables": {
+    "commonArtists": {
+      "rarityWeights": { "common": 88, "rare": 12, "epic": 0, "legendary": 0 },
+      "rolePool": ["guitarist", "bassist", "drummer", "keyboardist", "singer"],
+      "rankRange": [1, 3]
+    },
+    "uncommonArtists": {
+      "rarityWeights": { "common": 60, "rare": 30, "epic": 9, "legendary": 1 },
+      "rolePool": ["guitarist", "bassist", "drummer", "keyboardist", "singer"],
+      "rankRange": [4, 9]
+    },
+    "rareArtists": {
+      "rarityWeights": { "common": 40, "rare": 40, "epic": 17, "legendary": 3 },
+      "rolePool": ["guitarist", "bassist", "drummer", "keyboardist", "singer"],
+      "rankRange": [10, 18]
+    }
+  }
+}
