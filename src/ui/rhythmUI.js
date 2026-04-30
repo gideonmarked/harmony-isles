@@ -39,6 +39,8 @@ class RhythmUI {
   #getNow = () => 0;
   /** @type {Map<import('../engine/rhythmEngine.js').LiveNote, HTMLElement>} */
   #noteEls = new Map();
+  /** @type {ReturnType<typeof setTimeout> | null} */
+  #readyTimer = null;
 
   /**
    * @param {() => import('../engine/rhythmEngine.js').LiveNote[]} getLiveNotes
@@ -145,7 +147,40 @@ class RhythmUI {
           40%  { transform: translate(-50%, 0) scale(1.25); }
           100% { transform: translate(-50%, 0) scale(1.0); }
         }
+        #rhythm-ui .ready {
+          position: absolute;
+          left: 50%; bottom: ${160 + LANE_HEIGHT / 2}px;
+          transform: translate(-50%, 50%);
+          padding: 14px 28px;
+          background: rgba(8, 11, 16, 0.78);
+          border: 1px solid #ffb949;
+          border-radius: 8px;
+          color: #ffd884;
+          font-size: 22px; font-weight: 900; letter-spacing: 5px;
+          text-align: center;
+          text-shadow: 0 0 10px rgba(255, 200, 110, 0.6);
+          opacity: 0;
+          transition: opacity 220ms ease-out;
+          pointer-events: none;
+        }
+        #rhythm-ui .ready.show { opacity: 1; }
+        #rhythm-ui .ready .keys {
+          display: block; margin-top: 8px;
+          font-size: 14px; font-weight: 700; color: #c8d4e0;
+          letter-spacing: 8px;
+        }
+        #rhythm-ui .ready .keys span {
+          display: inline-block; padding: 2px 10px;
+          margin: 0 2px;
+          border: 1px solid #3a4756; border-radius: 4px;
+          background: rgba(255,255,255,0.05);
+          color: #fff;
+        }
       </style>
+      <div class="ready" data-bind="ready">
+        GET READY!
+        <span class="keys">${LANE_LABELS.map((l) => `<span>${l}</span>`).join('')}</span>
+      </div>
       <div class="streak" data-bind="streak"></div>
       <div class="stage">
         ${LANE_LABELS.map(
@@ -232,10 +267,37 @@ class RhythmUI {
     for (const u of this.#unsubs) u();
     this.#unsubs = [];
     this.#noteEls.clear();
+    if (this.#readyTimer) {
+      clearTimeout(this.#readyTimer);
+      this.#readyTimer = null;
+    }
     this.#root?.remove();
     this.#root = null;
     this.#lanes = [];
     this.#flashEls = [];
+  }
+
+  /**
+   * Show the "GET READY · D F J K" banner over the lane stage and
+   * auto-fade it after `durationMs`. Called from the battle scene
+   * when a Perform starts, in tandem with a forward-shifted song
+   * clock — the lanes are visible and idle so the player can place
+   * their fingers before notes appear.
+   *
+   * @param {number} durationMs
+   */
+  flashReady(durationMs) {
+    if (!this.#root) return;
+    const el = /** @type {HTMLElement | null} */ (
+      this.#root.querySelector('[data-bind="ready"]')
+    );
+    if (!el) return;
+    el.classList.add('show');
+    if (this.#readyTimer) clearTimeout(this.#readyTimer);
+    this.#readyTimer = setTimeout(() => {
+      el.classList.remove('show');
+      this.#readyTimer = null;
+    }, durationMs);
   }
 
   /**

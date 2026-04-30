@@ -1,0 +1,128 @@
+{
+  "musicPlaza": {
+    "id": "musicPlaza",
+    "name": "Music Plaza",
+    "rarity": "shop",
+    "biome": "town_square",
+    "encounterTable": null,
+    "price": 0,
+    "credRequired": 1,
+    "ownedAtStart": true,
+    "summary": "The shop hub. Free, encounter-safe.",
+    "width": 12,
+    "height": 9,
+    "spawnTile": [5, 7],
+    "tiles": [
+      "WWWWWWWWWWWW",
+      "WPPPPPPPPPPW",
+      "WP........PW",
+      "WP........PW",
+      "WP...HH...PW",
+      "WP...HH...PW",
+      "WP........PW",
+      "WPPPPPPPPPPW",
+      "WWWWWWWWWWWW"
+    ],
+    "legend": {
+      "W": "wall",
+      "P": "path",
+      ".": "path",
+      "H": "stage"
+    }
+  },
+  "garageStage": {
+    "id": "garageStage",
+    "name": "Garage Stage",
+    "rarity": "common",
+    "biome": "outdoor_grass",
+    "encounterTable": "commonArtists",
+    "price": 3000,
+    "credRequired": 1,
+    "ownedAtStart": true,
+    "summary": "Open-air driveway with crates and string lights.",
+    "width": 12,
+    "height": 9,
+    "spawnTile": [5, 7],
+    "tiles": [
+      "WWWWWWWWWWWW",
+      "W..........W",
+      "W..........W",
+      "W..........W",
+      "W....SS....W",
+      "W....SS....W",
+      "W..........W",
+      "W..........W",
+      "WWWWWWWWWWWW"
+    ],
+    "legend": {
+      "W": "wall",
+      ".": "grass",
+      "S": "stage"
+    }
+  },
+  "cityPark": {
+    "id": "cityPark",
+    "name": "City Park",
+    "rarity": "uncommon",
+    "biome": "park_grass",
+    "encounterTable": "uncommonArtists",
+    "price": 8000,
+    "credRequired": 8,
+    "ownedAtStart": false,
+    "summary": "Grass and benches, busker spots, fountains.",
+    "width": 14,
+    "height": 10,
+    "spawnTile": [6, 8],
+    "tiles": [
+      "WWWWWWWWWWWWWW",
+      "W............W",
+      "W..PP....PP..W",
+      "W............W",
+      "W............W",
+      "W.....SS.....W",
+      "W.....SS.....W",
+      "W............W",
+      "W............W",
+      "WWWWWWWWWWWWWW"
+    ],
+    "legend": {
+      "W": "wall",
+      ".": "grass",
+      "P": "path",
+      "S": "stage"
+    }
+  },
+  "openArena": {
+    "id": "openArena",
+    "name": "Open Arena",
+    "rarity": "rare",
+    "biome": "open_arena",
+    "encounterTable": "rareArtists",
+    "price": 20000,
+    "credRequired": 20,
+    "ownedAtStart": false,
+    "summary": "Daytime outdoor arena, banners, raised stage.",
+    "width": 16,
+    "height": 12,
+    "spawnTile": [7, 10],
+    "tiles": [
+      "WWWWWWWWWWWWWWWW",
+      "W..............W",
+      "W..............W",
+      "W..............W",
+      "W......SSSS....W",
+      "W......SSSS....W",
+      "W......SSSS....W",
+      "W..............W",
+      "W..............W",
+      "W..............W",
+      "W..............W",
+      "WWWWWWWWWWWWWWWW"
+    ],
+    "legend": {
+      "W": "wall",
+      ".": "grass",
+      "S": "stage"
+    }
+  }
+}

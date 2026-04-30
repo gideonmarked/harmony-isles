@@ -35,9 +35,12 @@ Opens the dev server at `http://localhost:5173` (or `5174` if 5173 is busy). Pre
 ### Jam Clash — your turn
 | Key | Action |
 | --- | --- |
-| `Z` | Perform Final Encore (rhythm minigame) |
-| `X` | Trigger Band Performance limit-break (Hype must be at 100) |
-| `Esc` | Abandon battle, return to title |
+| `Z` | Strum — light attack, no rhythm, restores ~10% Energy |
+| `X` | Perform a song (rhythm minigame) |
+| `V` | Trigger Band Performance limit-break (Hype must be at 100) |
+| `C` | Defend |
+| `I` | Items |
+| `Esc` | Abandon battle, return to world map |
 
 ### Jam Clash — rhythm minigame
 | Key | Action |
@@ -55,7 +58,7 @@ These are testing aids — judges aren't holding Shift, so they don't trigger by
 
 | Chord | Action |
 | --- | --- |
-| `Shift + H` | Fill Hype to 100 |
+| `Shift + H` | Fill Hype to 100 (then `V` to fire BP) |
 | `Shift + K` | KO the enemy instantly |
 
 ## Scripts
