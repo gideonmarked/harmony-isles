@@ -23,13 +23,10 @@
       "WPPPPPPPPPPW",
       "WWWWWWWWWWWW"
     ],
-    "legend": {
-      "W": "wall",
-      "P": "path",
-      ".": "path",
-      "H": "stage"
-    }
+    "legend": { "W": "wall", "P": "path", ".": "path", "H": "stage" }
   },
+
+  /* ================= COMMON ================= */
   "garageStage": {
     "id": "garageStage",
     "name": "Garage Stage",
@@ -54,12 +51,36 @@
       "W..........W",
       "WWWWWWWWWWWW"
     ],
-    "legend": {
-      "W": "wall",
-      ".": "grass",
-      "S": "stage"
-    }
+    "legend": { "W": "wall", ".": "grass", "S": "stage" }
   },
+  "backlotJam": {
+    "id": "backlotJam",
+    "name": "Backlot Jam",
+    "rarity": "common",
+    "biome": "dust_lot",
+    "encounterTable": "commonArtists",
+    "price": 3500,
+    "credRequired": 2,
+    "ownedAtStart": false,
+    "summary": "Dusty lot with amps stacked like towers.",
+    "width": 12,
+    "height": 9,
+    "spawnTile": [5, 7],
+    "tiles": [
+      "WWWWWWWWWWWW",
+      "W..........W",
+      "W..PP..PP..W",
+      "W..........W",
+      "W....SS....W",
+      "W....SS....W",
+      "W..........W",
+      "W..........W",
+      "WWWWWWWWWWWW"
+    ],
+    "legend": { "W": "wall", ".": "dirt", "P": "path", "S": "stage" }
+  },
+
+  /* ================= UNCOMMON ================= */
   "cityPark": {
     "id": "cityPark",
     "name": "City Park",
@@ -85,13 +106,37 @@
       "W............W",
       "WWWWWWWWWWWWWW"
     ],
-    "legend": {
-      "W": "wall",
-      ".": "grass",
-      "P": "path",
-      "S": "stage"
-    }
+    "legend": { "W": "wall", ".": "grass", "P": "path", "S": "stage" }
   },
+  "rooftopVibes": {
+    "id": "rooftopVibes",
+    "name": "Rooftop Vibes",
+    "rarity": "uncommon",
+    "biome": "city_roof",
+    "encounterTable": "uncommonArtists",
+    "price": 9000,
+    "credRequired": 10,
+    "ownedAtStart": false,
+    "summary": "City skyline, neon lights, intimate crowd.",
+    "width": 14,
+    "height": 10,
+    "spawnTile": [6, 8],
+    "tiles": [
+      "WWWWWWWWWWWWWW",
+      "W............W",
+      "W............W",
+      "W..PP....PP..W",
+      "W............W",
+      "W.....SS.....W",
+      "W.....SS.....W",
+      "W............W",
+      "W............W",
+      "WWWWWWWWWWWWWW"
+    ],
+    "legend": { "W": "wall", ".": "roof", "P": "path", "S": "stage" }
+  },
+
+  /* ================= RARE ================= */
   "openArena": {
     "id": "openArena",
     "name": "Open Arena",
@@ -119,10 +164,161 @@
       "W..............W",
       "WWWWWWWWWWWWWWWW"
     ],
-    "legend": {
-      "W": "wall",
-      ".": "grass",
-      "S": "stage"
-    }
+    "legend": { "W": "wall", ".": "grass", "S": "stage" }
+  },
+  "neonDistrict": {
+    "id": "neonDistrict",
+    "name": "Neon District",
+    "rarity": "rare",
+    "biome": "city_night",
+    "encounterTable": "rareArtists",
+    "price": 22000,
+    "credRequired": 22,
+    "ownedAtStart": false,
+    "summary": "Electric streets glowing with synth energy.",
+    "width": 16,
+    "height": 12,
+    "spawnTile": [7, 10],
+    "tiles": [
+      "WWWWWWWWWWWWWWWW",
+      "W..............W",
+      "W..PP......PP..W",
+      "W..............W",
+      "W......SSSS....W",
+      "W......SSSS....W",
+      "W......SSSS....W",
+      "W..............W",
+      "W..PP......PP..W",
+      "W..............W",
+      "W..............W",
+      "WWWWWWWWWWWWWWWW"
+    ],
+    "legend": { "W": "wall", ".": "street", "P": "path", "S": "stage" }
+  },
+
+  /* ================= EPIC ================= */
+  "skyColiseum": {
+    "id": "skyColiseum",
+    "name": "Sky Coliseum",
+    "rarity": "epic",
+    "biome": "sky_ruins",
+    "encounterTable": "epicArtists",
+    "price": 50000,
+    "credRequired": 40,
+    "ownedAtStart": false,
+    "summary": "Floating arena with ancient acoustics.",
+    "width": 18,
+    "height": 13,
+    "spawnTile": [8, 11],
+    "tiles": [
+      "WWWWWWWWWWWWWWWWWW",
+      "W................W",
+      "W................W",
+      "W....PP....PP....W",
+      "W................W",
+      "W.......SS.......W",
+      "W.......SS.......W",
+      "W.......SS.......W",
+      "W................W",
+      "W....PP....PP....W",
+      "W................W",
+      "W................W",
+      "WWWWWWWWWWWWWWWWWW"
+    ],
+    "legend": { "W": "wall", ".": "stone", "P": "path", "S": "stage" }
+  },
+  "crystalHarbor": {
+    "id": "crystalHarbor",
+    "name": "Crystal Harbor",
+    "rarity": "epic",
+    "biome": "crystal_coast",
+    "encounterTable": "epicArtists",
+    "price": 55000,
+    "credRequired": 45,
+    "ownedAtStart": false,
+    "summary": "Sound echoes through glowing crystal waters.",
+    "width": 18,
+    "height": 13,
+    "spawnTile": [8, 11],
+    "tiles": [
+      "WWWWWWWWWWWWWWWWWW",
+      "W................W",
+      "W................W",
+      "W................W",
+      "W.....SSSSSS.....W",
+      "W.....SSSSSS.....W",
+      "W.....SSSSSS.....W",
+      "W................W",
+      "W................W",
+      "W................W",
+      "W................W",
+      "W................W",
+      "WWWWWWWWWWWWWWWWWW"
+    ],
+    "legend": { "W": "wall", ".": "crystal", "S": "stage" }
+  },
+
+  /* ================= LEGENDARY ================= */
+  "auroraStage": {
+    "id": "auroraStage",
+    "name": "Aurora Stage",
+    "rarity": "legendary",
+    "biome": "aurora_sky",
+    "encounterTable": "legendaryArtists",
+    "price": 100000,
+    "credRequired": 80,
+    "ownedAtStart": false,
+    "summary": "Lights dance across the sky as music bends reality.",
+    "width": 20,
+    "height": 14,
+    "spawnTile": [9, 12],
+    "tiles": [
+      "WWWWWWWWWWWWWWWWWWWW",
+      "W..................W",
+      "W..................W",
+      "W....PP......PP....W",
+      "W..................W",
+      "W.......SSSS.......W",
+      "W.......SSSS.......W",
+      "W.......SSSS.......W",
+      "W.......SSSS.......W",
+      "W..................W",
+      "W....PP......PP....W",
+      "W..................W",
+      "W..................W",
+      "WWWWWWWWWWWWWWWWWWWW"
+    ],
+    "legend": { "W": "wall", ".": "light", "P": "path", "S": "stage" }
+  },
+  "voidSanctum": {
+    "id": "voidSanctum",
+    "name": "Void Sanctum",
+    "rarity": "legendary",
+    "biome": "cosmic_void",
+    "encounterTable": "legendaryArtists",
+    "price": 120000,
+    "credRequired": 100,
+    "ownedAtStart": false,
+    "summary": "A silent void where only music exists.",
+    "width": 20,
+    "height": 14,
+    "spawnTile": [9, 12],
+    "tiles": [
+      "WWWWWWWWWWWWWWWWWWWW",
+      "W..................W",
+      "W..................W",
+      "W..................W",
+      "W......SSSSSS......W",
+      "W......SSSSSS......W",
+      "W......SSSSSS......W",
+      "W......SSSSSS......W",
+      "W..................W",
+      "W..................W",
+      "W..................W",
+      "W..................W",
+      "W..................W",
+      "WWWWWWWWWWWWWWWWWWWW"
+    ],
+    "legend": { "W": "wall", ".": "void", "S": "stage" }
   }
 }
