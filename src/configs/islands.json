@@ -25,8 +25,6 @@
     ],
     "legend": { "W": "wall", "P": "path", ".": "path", "H": "stage" }
   },
-
-  /* ================= COMMON ================= */
   "garageStage": {
     "id": "garageStage",
     "name": "Garage Stage",
@@ -79,8 +77,6 @@
     ],
     "legend": { "W": "wall", ".": "dirt", "P": "path", "S": "stage" }
   },
-
-  /* ================= UNCOMMON ================= */
   "cityPark": {
     "id": "cityPark",
     "name": "City Park",
@@ -135,8 +131,6 @@
     ],
     "legend": { "W": "wall", ".": "roof", "P": "path", "S": "stage" }
   },
-
-  /* ================= RARE ================= */
   "openArena": {
     "id": "openArena",
     "name": "Open Arena",
@@ -195,8 +189,6 @@
     ],
     "legend": { "W": "wall", ".": "street", "P": "path", "S": "stage" }
   },
-
-  /* ================= EPIC ================= */
   "skyColiseum": {
     "id": "skyColiseum",
     "name": "Sky Coliseum",
@@ -257,8 +249,6 @@
     ],
     "legend": { "W": "wall", ".": "crystal", "S": "stage" }
   },
-
-  /* ================= LEGENDARY ================= */
   "auroraStage": {
     "id": "auroraStage",
     "name": "Aurora Stage",
