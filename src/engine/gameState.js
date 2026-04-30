@@ -402,3 +402,16 @@ export function expToNextCred(cred) {
   const safe = Math.max(1, cred);
   return Math.round(80 * Math.pow(1.18, safe - 1));
 }
+
+/**
+ * Per-rival rank curve. Mirrors `expToNextCred` per §11.1; band
+ * members and the manager share the same exp shape so progression
+ * feels uniform.
+ *
+ * @param {number} rank
+ * @returns {number}
+ */
+export function expToNextRank(rank) {
+  const safe = Math.max(1, rank);
+  return Math.round(80 * Math.pow(1.18, safe - 1));
+}
