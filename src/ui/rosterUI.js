@@ -1,7 +1,7 @@
 // @ts-check
 
 import { eventBus } from '../engine/eventBus.js';
-import { getState, dispatch } from '../engine/gameState.js';
+import { getState, dispatch, expToNextRank } from '../engine/gameState.js';
 
 /**
  * Roster UI — view captures + manage team membership.
@@ -138,10 +138,6 @@ class RosterUI {
     }, 2000);
   }
 
-  #expToNextRank(/** @type {number} */ rank) {
-    return Math.round(80 * Math.pow(1.18, Math.max(1, rank) - 1));
-  }
-
   #refresh() {
     if (!this.#root) return;
     const s = getState();
@@ -180,7 +176,7 @@ class RosterUI {
       .map((id, idx) => {
         const m = s.roster[id];
         const inTeam = teamSet.has(id);
-        const expCap = this.#expToNextRank(m.rank);
+        const expCap = expToNextRank(m.rank);
         const teamBadge = inTeam
           ? `<span class="team-badge">TEAM ${s.team.indexOf(id) + 1}</span>`
           : '';

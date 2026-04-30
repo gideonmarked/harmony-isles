@@ -5,7 +5,7 @@ import * as THREE from 'three';
 import { eventBus } from '../engine/eventBus.js';
 import { sceneManager } from '../engine/sceneManager.js';
 import { getConfig } from '../engine/configService.js';
-import { getState, dispatch } from '../engine/gameState.js';
+import { getState, dispatch, expToNextRank } from '../engine/gameState.js';
 import { startRhythm, LANE_KEYS } from '../engine/rhythmEngine.js';
 import { freezeFor, shakeCamera, resetTimeFx } from '../engine/timeFx.js';
 import { Character } from '../entities/character.js';
@@ -183,8 +183,49 @@ export const battleScene = (() => {
     dispatch({ type: 'GRANT_NOTES', amount: notes });
     dispatch({ type: 'GRANT_CREDIBILITY', amount: cred });
     dispatch({ type: 'GRANT_EXP', amount: exp });
+
+    // §11.2 band exp — each alive member earns the post-rarity payout
+    // (no ÷ band size; awarding per-member keeps low-rank progression
+    // visible at slice scope). Loop the exp ladder so a big legendary
+    // win can vault a rookie multiple ranks at once.
+    const memberExp = Math.round((10 + 6 * rank) * (rarityMult[r] ?? 1));
+    /** @type {{ id: string, name: string, fromRank: number, toRank: number }[]} */
+    const levelUps = [];
+    for (const c of team) {
+      if (c.isKO) continue;
+      const rosterId = c.id.split(':')[1] ?? c.id;
+      const before = getState().roster[rosterId];
+      if (!before) continue;
+      dispatch({ type: 'GRANT_RIVAL_EXP', id: rosterId, amount: memberExp });
+      const after = getState().roster[rosterId];
+      if (!after) continue;
+      let steps = 0;
+      let pending = after.exp;
+      let rk = after.rank;
+      while (rk < 100 && pending >= expToNextRank(rk)) {
+        pending -= expToNextRank(rk);
+        rk++;
+        steps++;
+      }
+      if (steps > 0) {
+        const fromRank = before.rank;
+        const toRank = fromRank + steps;
+        // LEVEL_UP_RIVAL zeros exp; the rollover remainder is
+        // intentionally dropped — slice progression is gentle enough
+        // that overshoot is rare.
+        dispatch({ type: 'LEVEL_UP_RIVAL', id: rosterId, ranks: steps });
+        levelUps.push({ id: rosterId, name: before.name, fromRank, toRank });
+        eventBus.emit('rival.leveledUp', {
+          id: rosterId,
+          name: before.name,
+          fromRank,
+          toRank,
+        });
+      }
+    }
+
     eventBus.emit('battle.rewardsGranted', { notes, cred, exp, rank, rarity: r });
-    return { notes, cred, exp };
+    return { notes, cred, exp, levelUps };
   }
 
   /**
@@ -232,13 +273,23 @@ export const battleScene = (() => {
       const line = currentRivalDef?.victoryLine ?? '';
       const rewardText = ` · +${rewards.notes} N · +${rewards.exp} EXP · +${rewards.cred} Cred`;
       const lineText = line ? `${enemy.name}: "${line}"` : 'Victory!';
+      const levelUpText = rewards.levelUps.length
+        ? ' · ' +
+          rewards.levelUps
+            .map((l) =>
+              l.toRank - l.fromRank > 1
+                ? `${l.name} → rank ${l.toRank} (+${l.toRank - l.fromRank})`
+                : `${l.name} → rank ${l.toRank}`
+            )
+            .join(', ')
+        : '';
       // Capture-the-rival prompt: if eligible, ask the player to
       // commit. Otherwise just nudge them to leave.
       const canRecruit = canOfferRecruit(currentRivalDef ?? {});
       const tail = canRecruit
         ? ` · Y to recruit ${currentRivalDef?.name ?? 'them'} · N/Esc to skip`
         : ' · Press Esc to continue.';
-      setPrompt(`${lineText}${rewardText}${tail}`);
+      setPrompt(`${lineText}${rewardText}${levelUpText}${tail}`);
       shakeCamera(0.65, 480);
       freezeFor(220);
       eventBus.emit('battle.gameOver', { outcome: 'victory' });
