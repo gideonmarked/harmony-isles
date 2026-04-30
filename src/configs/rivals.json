@@ -13,20 +13,50 @@
     "victoryLine": "...alright, you've got the chops. I'll see you at the next show.",
     "defeatLine": "I get to write the setlist now."
   },
-  "lowEndDemon": {
-    "id": "lowEndDemon",
-    "name": "Low-End Demon",
+  "stringPhantom": {
+    "id": "stringPhantom",
+    "name": "String Phantom",
+    "role": "guitarist",
+    "design": "guit_02",
+    "rarity": "rare",
+    "rank": 1,
+    "color": "0x7a3cff",
+    "stats": { "technicality": 15, "focus": 11, "groove": 9, "confidence": 1, "creativity": 13, "energy": 9 },
+    "performPower": 1.0,
+    "intro": "Plays solos like they’re whispering secrets.",
+    "victoryLine": "Did you hear that note? Yeah, neither did you.",
+    "defeatLine": "Hmph. Sloppy… I respect it."
+  },
+
+  "bassAnchor": {
+    "id": "bassAnchor",
+    "name": "Bass Anchor",
     "role": "bassist",
-    "design": "bass_02",
+    "design": "bass_01",
     "rarity": "common",
     "rank": 1,
-    "color": "0x9c5cff",
-    "stats": { "technicality": 10, "focus": 9, "groove": 13, "confidence": 1, "creativity": 9, "energy": 10 },
+    "color": "0x4a7cff",
+    "stats": { "technicality": 9, "focus": 12, "groove": 15, "confidence": 1, "creativity": 8, "energy": 10 },
     "performPower": 1.0,
-    "intro": "Anchor of every bar band on the floating islands.",
-    "victoryLine": "Pocket's still mine. You're just renting it.",
-    "defeatLine": "Couldn't lock in. Need a session."
+    "intro": "Keeps everything grounded, no matter how wild it gets.",
+    "victoryLine": "You drifted. I didn’t.",
+    "defeatLine": "Lost the groove… that stings."
   },
+  "fretRider": {
+    "id": "fretRider",
+    "name": "Fret Rider",
+    "role": "bassist",
+    "design": "bass_03",
+    "rarity": "rare",
+    "rank": 1,
+    "color": "0xff8c42",
+    "stats": { "technicality": 13, "focus": 8, "groove": 14, "confidence": 1, "creativity": 12, "energy": 13 },
+    "performPower": 1.0,
+    "intro": "Treats basslines like lead melodies.",
+    "victoryLine": "Front row noticed me. That’s enough.",
+    "defeatLine": "Too flashy… should’ve locked in."
+  },
+
   "beatSmith": {
     "id": "beatSmith",
     "name": "Beat Smith",
@@ -41,6 +71,21 @@
     "victoryLine": "Stay on the click. That's the only rule.",
     "defeatLine": "You held the pocket better than me."
   },
+  "tempoRebel": {
+    "id": "tempoRebel",
+    "name": "Tempo Rebel",
+    "role": "drummer",
+    "design": "drum_02",
+    "rarity": "rare",
+    "rank": 1,
+    "color": "0xff4d6d",
+    "stats": { "technicality": 12, "focus": 8, "groove": 11, "confidence": 1, "creativity": 14, "energy": 15 },
+    "performPower": 1.0,
+    "intro": "Bends time like it owes them money.",
+    "victoryLine": "Metronomes fear me.",
+    "defeatLine": "Okay… maybe time matters."
+  },
+
   "synthWizard": {
     "id": "synthWizard",
     "name": "Synth Wizard",
@@ -55,6 +100,21 @@
     "victoryLine": "I'll send you the preset. Eventually.",
     "defeatLine": "Looks like I need to revisit my chord voicings."
   },
+  "keyMaestro": {
+    "id": "keyMaestro",
+    "name": "Key Maestro",
+    "role": "keyboardist",
+    "design": "key_01",
+    "rarity": "common",
+    "rank": 1,
+    "color": "0x00d4aa",
+    "stats": { "technicality": 10, "focus": 13, "groove": 10, "confidence": 1, "creativity": 11, "energy": 9 },
+    "performPower": 1.0,
+    "intro": "Precision first, flair second.",
+    "victoryLine": "Clean execution wins every time.",
+    "defeatLine": "Missed a transition… unacceptable."
+  },
+
   "vocalStorm": {
     "id": "vocalStorm",
     "name": "Vocal Storm",
@@ -68,5 +128,19 @@
     "intro": "Voice cuts through any mix. Knows it.",
     "victoryLine": "Was that supposed to be the chorus?",
     "defeatLine": "Lost the high note. I'll warm up next time."
+  },
+  "echoSiren": {
+    "id": "echoSiren",
+    "name": "Echo Siren",
+    "role": "singer",
+    "design": "sing_01",
+    "rarity": "rare",
+    "rank": 1,
+    "color": "0xff66cc",
+    "stats": { "technicality": 11, "focus": 9, "groove": 10, "confidence": 1, "creativity": 15, "energy": 12 },
+    "performPower": 1.0,
+    "intro": "Every note lingers like a spell.",
+    "victoryLine": "You heard it. They felt it.",
+    "defeatLine": "My voice… slipped away."
   }
 }
