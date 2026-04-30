@@ -6,6 +6,7 @@ import { eventBus } from '../engine/eventBus.js';
 import { sceneManager } from '../engine/sceneManager.js';
 import { getConfig } from '../engine/configService.js';
 import { getState, dispatch, expToNextRank } from '../engine/gameState.js';
+import { saveSystem } from '../engine/saveSystem.js';
 import { startRhythm, LANE_KEYS } from '../engine/rhythmEngine.js';
 import { freezeFor, shakeCamera, resetTimeFx } from '../engine/timeFx.js';
 import { Character } from '../entities/character.js';
@@ -109,6 +110,14 @@ export const battleScene = (() => {
   let enemy = null;
   /** @type {BattlePhase} */
   let phase = 'playerTurn';
+  /**
+   * Set when the battle ends, before the player has dismissed the
+   * gameOver prompt. Drives the retry-vs-title key handling: on
+   * 'defeat', `Z` reloads the last save; on 'victory', `Z` is a no-op
+   * (the recruit prompt owns that key when applicable).
+   * @type {'victory' | 'defeat' | null}
+   */
+  let gameOverOutcome = null;
   let hype = 0;
   /** @type {(() => void)[]} */
   let unsubs = [];
@@ -317,6 +326,7 @@ export const battleScene = (() => {
     if (!enemy || team.length === 0) return false;
     if (enemy.isKO) {
       phase = 'gameOver';
+      gameOverOutcome = 'victory';
       const rewards = grantVictoryRewards(currentRivalDef ?? {});
       const line = currentRivalDef?.victoryLine ?? '';
       const rewardText = ` · +${rewards.notes} N · +${rewards.exp} EXP · +${rewards.cred} Cred`;
@@ -348,8 +358,18 @@ export const battleScene = (() => {
     }
     if (isTeamWiped()) {
       phase = 'gameOver';
+      gameOverOutcome = 'defeat';
       const line = currentRivalDef?.defeatLine ?? '';
-      setPrompt(line ? `${enemy.name}: "${line}" · Press Esc to continue.` : 'Defeated. Press Esc to return.');
+      const lineText = line ? `${enemy.name}: "${line}"` : 'Your band collapses on stage.';
+      // Retry availability depends on whether a save exists in the
+      // active slot — fresh runs without a save fall back to "press
+      // Esc to return to title" (the world map is unreachable without
+      // a save).
+      const hasSave = saveSystem.listSlots()[saveSystem.activeSlot] != null;
+      const tail = hasSave
+        ? ' · Z to retry from save · Esc for title'
+        : ' · Press Esc to return to title';
+      setPrompt(`${lineText}${tail}`);
       shakeCamera(0.55, 420);
       freezeFor(220);
       eventBus.emit('battle.gameOver', { outcome: 'defeat' });
@@ -1103,6 +1123,7 @@ export const battleScene = (() => {
 
       hype = 0;
       phase = 'introducing';
+      gameOverOutcome = null;
       battleHud.show();
       battleFx.show();
       // Build the team payload from the in-battle Characters +
@@ -1205,11 +1226,38 @@ export const battleScene = (() => {
                 rhythm = null;
                 rhythmUI.hide();
               }
-              // After a battle the player usually wants to manage
-              // their tour — visit the shop, switch islands, check
-              // owned roster. Drop them at the world map; from there
-              // they can step right back into Explore on the same
-              // island in one keypress.
+              // Defeat lands the player back at the title — they may
+              // want to switch slots or start over. After a victory or
+              // mid-battle bail-out the world map is the right hub
+              // (shop, roster, next island).
+              const dest =
+                phase === 'gameOver' && gameOverOutcome === 'defeat'
+                  ? 'title'
+                  : 'worldMap';
+              sceneManager.transition(dest);
+              return;
+            }
+            // Defeat retry — reload the last save (which is the
+            // pre-battle checkpoint, since the gameOver auto-save is
+            // skipped on defeat) and drop into the world map. Player
+            // walks back into the encounter on a clean slate.
+            if (
+              phase === 'gameOver' &&
+              gameOverOutcome === 'defeat' &&
+              payload.code === 'KeyZ'
+            ) {
+              const loaded = saveSystem.loadActive();
+              if (!loaded) {
+                // No save means the run was a fresh "no profile yet"
+                // session. Bail to title rather than reloading nothing.
+                sceneManager.transition('title');
+                return;
+              }
+              if (rhythm) {
+                rhythm.stop();
+                rhythm = null;
+                rhythmUI.hide();
+              }
               sceneManager.transition('worldMap');
               return;
             }
