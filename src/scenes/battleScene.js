@@ -260,12 +260,14 @@ export const battleScene = (() => {
     phase = 'playerTurn';
     if (player) player.isDefending = false;
     const itemHint = inventoryHasAny() ? ' · I = Items' : '';
+    const who = player?.name ?? 'Your';
+    const lead = team.length > 1 ? `${who}'s turn` : 'Your turn';
     if (hype >= HYPE_MAX) {
       setPrompt(
-        `Your turn — Z = Strum · X = Perform · V = BAND PERFORMANCE! · C = Defend${itemHint}`
+        `${lead} — Z = Strum · X = Perform · V = BAND PERFORMANCE! · C = Defend${itemHint}`
       );
     } else {
-      setPrompt(`Your turn — Z = Strum · X = Perform · C = Defend${itemHint}`);
+      setPrompt(`${lead} — Z = Strum · X = Perform · C = Defend${itemHint}`);
     }
   }
 
@@ -1186,7 +1188,7 @@ export const battleScene = (() => {
     update(dt) {
       // Idle bob / attack lunge / KO collapse animations run every
       // frame regardless of phase so characters always feel alive.
-      player?.update(dt);
+      for (const c of team) c.update(dt);
       enemy?.update(dt);
 
       if (phase !== 'performing' || !rhythm) return;
@@ -1213,11 +1215,14 @@ export const battleScene = (() => {
       itemMenu.hide();
       songMenu.hide();
       resetTimeFx();
-      player?.clearBuffs();
+      for (const c of team) c.clearBuffs();
       enemy?.clearBuffs();
 
       if (group?.parent) group.parent.remove(group);
       group = null;
+      team = [];
+      activeTeamIdx = 0;
+      actedThisRound = 0;
       player = null;
       enemy = null;
       currentSong = null;
