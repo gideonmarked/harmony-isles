@@ -10,6 +10,8 @@ import { saveSystem } from './engine/saveSystem.js';
 import { RNG } from './util/rng.js';
 import { createRenderer, CAMERA_BASE_POSITION } from './engine/renderer.js';
 import { isFrozen, applyShakeToCamera } from './engine/timeFx.js';
+import { assetLoader } from './engine/assetLoader.js';
+import { bboxDebug } from './engine/bboxDebug.js';
 import { titleScene } from './scenes/titleScene.js';
 import { worldMapScene } from './scenes/worldMapScene.js';
 import { exploreScene } from './scenes/exploreScene.js';
@@ -26,6 +28,15 @@ if (!mount) {
 const mainCfg = getConfig('main');
 const rng = new RNG(mainCfg.rngSeed ?? 1);
 audioManager.setMasterVolume(mainCfg.audio?.masterVolume ?? 0.8);
+
+// Asset manifest — register before any scene constructs entities so
+// the first Character built can already see its sprite registration.
+// Empty by default; entries land as art is dropped into /public/.
+assetLoader.registerManifest(
+  /** @type {import('./engine/assetLoader.js').AssetManifest} */ (
+    getConfig('assetManifest')
+  )
+);
 
 eventBus.on('stateChanged', ({ action }) => {
   console.log('[state]', action.type, getState());
@@ -52,6 +63,7 @@ console.log('[boot]', {
 const { renderer, scene, camera, resize } = createRenderer(mount);
 
 inputManager.attach();
+bboxDebug.attach(scene);
 sceneManager.init({ scene, camera });
 sceneManager.register(titleScene);
 sceneManager.register(worldMapScene);
@@ -83,6 +95,7 @@ function loop(now) {
     sceneManager.update(dt);
   }
   applyShakeToCamera(camera, CAMERA_BASE_POSITION, dt);
+  bboxDebug.update();
 
   renderer.render(scene, camera);
   inputManager.endFrame();
