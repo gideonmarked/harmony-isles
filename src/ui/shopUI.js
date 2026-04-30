@@ -5,20 +5,29 @@ import { getConfig } from '../engine/configService.js';
 import { dispatch, getState, expToNextCred } from '../engine/gameState.js';
 
 /**
- * Shop UI — island purchasing gated by Manager Credibility and Notes
- * (design doc §11.5 unlock table + §25.5 cumulative spend reference).
+ * Shop UI — two tabs:
  *
- * Each island sits in one of four states:
- *   - owned     : already bought; appears greyed-out / "OWNED"
+ *   ISLANDS  : credibility-gated tour expansion (§11.5 + §25.5)
+ *   ITEMS    : consumables for battle (§25.4 + §20)
+ *
+ * Each row sits in one of four states:
+ *   - owned     : (islands only) already bought; appears greyed-out
  *   - available : enough Cred AND enough Notes; "Buy" enabled
- *   - locked    : Cred too low; shows the unlock requirement
- *   - poor      : Cred met, but Notes too low; "Save up" hint
+ *   - locked    : Cred too low; shows the unlock requirement (islands only)
+ *   - poor      : Cred met (or N/A), but Notes too low; "Save up" hint
+ *
+ * Items have no Cred gate — they're available to anyone with Notes.
+ * Items also persist as a count in inventory rather than a boolean
+ * owned flag, so the row keeps showing "BUY (×3)" after each purchase.
  *
  * The shop is decoupled from any specific scene — the world map opens
  * it, but a future shop_zone tile in Music Plaza could too. It manages
  * its own DOM lifecycle through show()/hide() and routes input via the
  * EventBus subscription so it composes with whatever scene is hosting.
  */
+
+/** @typedef {'islands' | 'items'} ShopTab */
+
 class ShopUI {
   /** @type {HTMLElement | null} */
   #root = null;
@@ -26,26 +35,23 @@ class ShopUI {
   #unsubs = [];
   /** @type {(() => void) | null} */
   #onClose = null;
+  /** @type {ShopTab} */
+  #tab = 'islands';
   /** @type {string[]} */
   #catalogIds = [];
   /** @type {number} */
   #selected = 0;
+  /** @type {string} */
+  #flashMessage = '';
+  /** @type {ReturnType<typeof setTimeout> | null} */
+  #flashTimer = null;
 
   /** @param {() => void} [onClose] */
   show(onClose) {
     if (this.#root) return;
     this.#onClose = onClose ?? null;
-
-    const cfg = /** @type {Record<string, any>} */ (getConfig('islands'));
-    // Sort by credRequired so the player reads the catalog top-down
-    // as a progression ladder rather than alphabetical noise.
-    this.#catalogIds = Object.keys(cfg).sort((a, b) => {
-      const ca = cfg[a].credRequired ?? 0;
-      const cb = cfg[b].credRequired ?? 0;
-      if (ca !== cb) return ca - cb;
-      return (cfg[a].price ?? 0) - (cfg[b].price ?? 0);
-    });
-    this.#selected = 0;
+    this.#tab = 'islands';
+    this.#rebuildCatalog();
 
     this.#root = this.#buildOverlay();
     document.body.appendChild(this.#root);
@@ -53,7 +59,7 @@ class ShopUI {
 
     this.#unsubs.push(
       eventBus.on('input.keyDown', (p) => this.#onKey(p)),
-      // Re-render on any state change so cred/notes/owned updates reflect.
+      // Re-render on any state change so cred/notes/owned/inventory updates reflect.
       eventBus.on('stateChanged', () => this.#render())
     );
   }
@@ -61,6 +67,10 @@ class ShopUI {
   hide() {
     for (const u of this.#unsubs) u();
     this.#unsubs = [];
+    if (this.#flashTimer) {
+      clearTimeout(this.#flashTimer);
+      this.#flashTimer = null;
+    }
     this.#root?.remove();
     this.#root = null;
     this.#onClose = null;
@@ -72,13 +82,27 @@ class ShopUI {
     switch (payload.code) {
       case 'ArrowUp':
       case 'KeyW':
-        this.#selected = (this.#selected - 1 + this.#catalogIds.length) % this.#catalogIds.length;
-        this.#render();
+        if (this.#catalogIds.length > 0) {
+          this.#selected =
+            (this.#selected - 1 + this.#catalogIds.length) % this.#catalogIds.length;
+          this.#render();
+        }
         break;
       case 'ArrowDown':
       case 'KeyS':
-        this.#selected = (this.#selected + 1) % this.#catalogIds.length;
-        this.#render();
+        if (this.#catalogIds.length > 0) {
+          this.#selected = (this.#selected + 1) % this.#catalogIds.length;
+          this.#render();
+        }
+        break;
+      case 'ArrowLeft':
+      case 'BracketLeft':
+        this.#switchTab(this.#tab === 'items' ? 'islands' : 'items');
+        break;
+      case 'ArrowRight':
+      case 'BracketRight':
+      case 'Tab':
+        this.#switchTab(this.#tab === 'islands' ? 'items' : 'islands');
         break;
       case 'Enter':
       case 'KeyZ':
@@ -93,6 +117,35 @@ class ShopUI {
     }
   }
 
+  /** @param {ShopTab} next */
+  #switchTab(next) {
+    if (this.#tab === next) return;
+    this.#tab = next;
+    this.#rebuildCatalog();
+    this.#render();
+  }
+
+  #rebuildCatalog() {
+    if (this.#tab === 'islands') {
+      const cfg = /** @type {Record<string, any>} */ (getConfig('islands'));
+      // Sort by credRequired so the player reads the catalog top-down
+      // as a progression ladder rather than alphabetical noise.
+      this.#catalogIds = Object.keys(cfg).sort((a, b) => {
+        const ca = cfg[a].credRequired ?? 0;
+        const cb = cfg[b].credRequired ?? 0;
+        if (ca !== cb) return ca - cb;
+        return (cfg[a].price ?? 0) - (cfg[b].price ?? 0);
+      });
+    } else {
+      const cfg = /** @type {Record<string, any>} */ (getConfig('items'));
+      // Sort items by buy price so cheap consumables anchor the top.
+      this.#catalogIds = Object.keys(cfg).sort(
+        (a, b) => (cfg[a].buy ?? 0) - (cfg[b].buy ?? 0)
+      );
+    }
+    this.#selected = 0;
+  }
+
   #close() {
     const cb = this.#onClose;
     this.hide();
@@ -102,16 +155,29 @@ class ShopUI {
   #tryPurchase() {
     const id = this.#catalogIds[this.#selected];
     if (!id) return;
-    const cfg = /** @type {Record<string, any>} */ (getConfig('islands'));
-    const def = cfg[id];
-    if (!def) return;
-    const status = this.#statusFor(def);
-    if (status !== 'available') {
-      this.#flashRow();
-      return;
+    if (this.#tab === 'islands') {
+      const cfg = /** @type {Record<string, any>} */ (getConfig('islands'));
+      const def = cfg[id];
+      if (!def) return;
+      const status = this.#islandStatusFor({ ...def, id });
+      if (status !== 'available') {
+        this.#flashRow();
+        return;
+      }
+      dispatch({ type: 'PURCHASE_ISLAND', islandId: id, price: def.price ?? 0 });
+      eventBus.emit('shop.islandPurchased', { islandId: id, price: def.price ?? 0 });
+    } else {
+      const cfg = /** @type {Record<string, any>} */ (getConfig('items'));
+      const def = cfg[id];
+      if (!def) return;
+      if (getState().manager.notes < (def.buy ?? 0)) {
+        this.#flashRow();
+        return;
+      }
+      dispatch({ type: 'PURCHASE_ITEM', itemId: id, price: def.buy ?? 0 });
+      eventBus.emit('shop.itemPurchased', { itemId: id, price: def.buy ?? 0 });
+      this.#flash(`Bought ${def.name}.`);
     }
-    dispatch({ type: 'PURCHASE_ISLAND', islandId: id, price: def.price ?? 0 });
-    eventBus.emit('shop.islandPurchased', { islandId: id, price: def.price ?? 0 });
   }
 
   #flashRow() {
@@ -122,16 +188,37 @@ class ShopUI {
     row.classList.add('flash');
   }
 
+  /** @param {string} text */
+  #flash(text) {
+    this.#flashMessage = text;
+    this.#render();
+    if (this.#flashTimer) clearTimeout(this.#flashTimer);
+    this.#flashTimer = setTimeout(() => {
+      this.#flashMessage = '';
+      this.#render();
+      this.#flashTimer = null;
+    }, 1600);
+  }
+
   /**
-   * @param {{ price?: number, credRequired?: number, ownedAtStart?: boolean }} def
+   * @param {{ id?: string, price?: number, credRequired?: number }} def
    * @returns {'owned' | 'available' | 'poor' | 'locked'}
    */
-  #statusFor(def) {
+  #islandStatusFor(def) {
     const s = getState();
-    const id = /** @type {{ id?: string }} */ (def).id;
-    if (id && s.world.ownedIslands.includes(id)) return 'owned';
+    if (def.id && s.world.ownedIslands.includes(def.id)) return 'owned';
     if (s.manager.credibility < (def.credRequired ?? 1)) return 'locked';
     if (s.manager.notes < (def.price ?? 0)) return 'poor';
+    return 'available';
+  }
+
+  /**
+   * @param {{ buy?: number }} def
+   * @returns {'available' | 'poor'}
+   */
+  #itemStatusFor(def) {
+    const s = getState();
+    if (s.manager.notes < (def.buy ?? 0)) return 'poor';
     return 'available';
   }
 
@@ -139,10 +226,14 @@ class ShopUI {
     if (!this.#root) return;
     const list = this.#root.querySelector('[data-bind="list"]');
     const summary = this.#root.querySelector('[data-bind="summary"]');
-    if (!list || !summary) return;
+    const title = this.#root.querySelector('[data-bind="title"]');
+    const flash = this.#root.querySelector('[data-bind="flash"]');
+    if (!list || !summary || !title) return;
 
-    const cfg = /** @type {Record<string, any>} */ (getConfig('islands'));
     const s = getState();
+
+    title.textContent =
+      this.#tab === 'islands' ? 'SHOP — Islands' : 'SHOP — Items';
 
     const next = expToNextCred(s.manager.credibility);
     summary.textContent =
@@ -150,10 +241,30 @@ class ShopUI {
       `Cred ${s.manager.credibility}  ·  ` +
       `EXP ${s.manager.exp.toLocaleString()} / ${next.toLocaleString()}`;
 
-    list.innerHTML = this.#catalogIds
+    if (flash) {
+      flash.textContent = this.#flashMessage;
+      flash.classList.toggle('show', !!this.#flashMessage);
+    }
+
+    // Tab indicators
+    const tabIslands = this.#root.querySelector('[data-tab="islands"]');
+    const tabItems = this.#root.querySelector('[data-tab="items"]');
+    if (tabIslands) tabIslands.classList.toggle('active', this.#tab === 'islands');
+    if (tabItems) tabItems.classList.toggle('active', this.#tab === 'items');
+
+    if (this.#tab === 'islands') {
+      list.innerHTML = this.#renderIslandsList();
+    } else {
+      list.innerHTML = this.#renderItemsList();
+    }
+  }
+
+  #renderIslandsList() {
+    const cfg = /** @type {Record<string, any>} */ (getConfig('islands'));
+    return this.#catalogIds
       .map((id, idx) => {
         const def = { ...cfg[id], id };
-        const status = this.#statusFor(def);
+        const status = this.#islandStatusFor(def);
         return /* html */ `
           <div class="row ${idx === this.#selected ? 'active' : ''} ${status}" data-idx="${idx}">
             <div class="left">
@@ -166,7 +277,36 @@ class ShopUI {
             <div class="right">
               <div class="price">${def.price > 0 ? `${def.price.toLocaleString()} N` : 'FREE'}</div>
               <div class="req">Cred ${def.credRequired ?? 1}</div>
-              <div class="status">${this.#statusLabel(status, def)}</div>
+              <div class="status">${this.#islandStatusLabel(status, def)}</div>
+            </div>
+          </div>
+        `;
+      })
+      .join('');
+  }
+
+  #renderItemsList() {
+    const cfg = /** @type {Record<string, any>} */ (getConfig('items'));
+    const inv = getState().inventory;
+    return this.#catalogIds
+      .map((id, idx) => {
+        const def = cfg[id];
+        if (!def) return '';
+        const status = this.#itemStatusFor(def);
+        const owned = inv[id] ?? 0;
+        const ownedBadge = owned > 0 ? `<span class="own-badge">×${owned}</span>` : '';
+        return /* html */ `
+          <div class="row ${idx === this.#selected ? 'active' : ''} ${status}" data-idx="${idx}">
+            <div class="left">
+              <div class="name">${def.name} ${ownedBadge}</div>
+              <div class="meta">
+                <span class="bio">${def.summary ?? ''}</span>
+              </div>
+            </div>
+            <div class="right">
+              <div class="price">${(def.buy ?? 0).toLocaleString()} N</div>
+              <div class="req">${def.duration === 'battle' ? 'Battle buff' : def.duration === 'instant' ? 'Instant' : ''}</div>
+              <div class="status">${this.#itemStatusLabel(status, def)}</div>
             </div>
           </div>
         `;
@@ -178,7 +318,7 @@ class ShopUI {
    * @param {'owned' | 'available' | 'poor' | 'locked'} status
    * @param {{ credRequired?: number, price?: number }} def
    */
-  #statusLabel(status, def) {
+  #islandStatusLabel(status, def) {
     switch (status) {
       case 'owned':
         return 'OWNED';
@@ -190,6 +330,15 @@ class ShopUI {
       default:
         return `LOCKED · CRED ${def.credRequired}`;
     }
+  }
+
+  /**
+   * @param {'available' | 'poor'} status
+   * @param {{ buy?: number }} def
+   */
+  #itemStatusLabel(status, def) {
+    if (status === 'available') return 'BUY';
+    return `NEED ${(def.buy ?? 0) - getState().manager.notes} MORE`;
   }
 
   /** @returns {HTMLElement} */
@@ -219,10 +368,35 @@ class ShopUI {
           margin-top: 14px; font-size: 14px; color: #c8d4e0;
           letter-spacing: 1px;
         }
+        #shop-overlay .tabs {
+          margin-top: 18px;
+          display: flex; gap: 6px;
+        }
+        #shop-overlay .tab {
+          padding: 8px 18px;
+          background: rgba(14, 18, 26, 0.92);
+          border: 1px solid #2a3340; border-radius: 6px;
+          font-size: 12px; letter-spacing: 2px; text-transform: uppercase;
+          color: #8a96a4; cursor: default;
+          transition: all 140ms ease-out;
+        }
+        #shop-overlay .tab.active {
+          color: #ffd884;
+          border-color: #ffb949;
+          box-shadow: 0 0 10px rgba(255,185,73,0.30);
+        }
+        #shop-overlay .flash {
+          margin-top: 10px; font-size: 13px;
+          color: #ffd884; letter-spacing: 1.2px;
+          opacity: 0; transition: opacity 140ms ease-out;
+          min-height: 16px;
+        }
+        #shop-overlay .flash.show { opacity: 1; }
         #shop-overlay .list {
-          margin-top: 22px;
+          margin-top: 14px;
           width: 100%; max-width: 720px;
           display: flex; flex-direction: column; gap: 10px;
+          max-height: 60vh; overflow-y: auto;
         }
         #shop-overlay .row {
           display: flex; justify-content: space-between; align-items: center;
@@ -250,6 +424,14 @@ class ShopUI {
         #shop-overlay .name {
           font-size: 17px; font-weight: 700; color: #ffd884;
           letter-spacing: 1px;
+        }
+        #shop-overlay .own-badge {
+          margin-left: 6px;
+          font-size: 11px; color: #6ec1ff;
+          letter-spacing: 1px;
+          padding: 1px 6px;
+          background: rgba(110,193,255,0.10);
+          border-radius: 3px;
         }
         #shop-overlay .meta {
           font-size: 11px; color: #8a96a4; margin-top: 4px;
@@ -295,12 +477,20 @@ class ShopUI {
           font-family: inherit; font-size: 11px;
         }
       </style>
-      <div class="title">SHOP — Islands</div>
-      <div class="subtitle">Build out your tour. Bigger islands draw bigger crowds.</div>
+      <div class="title" data-bind="title">SHOP — Islands</div>
+      <div class="subtitle">Build out your tour. Stock the band fridge.</div>
       <div class="summary" data-bind="summary"></div>
+      <div class="tabs">
+        <div class="tab" data-tab="islands">Islands</div>
+        <div class="tab" data-tab="items">Items</div>
+      </div>
+      <div class="flash" data-bind="flash"></div>
       <div class="list" data-bind="list"></div>
       <div class="controls">
-        <kbd>↑</kbd>/<kbd>↓</kbd> select &nbsp;·&nbsp; <kbd>Enter</kbd> buy &nbsp;·&nbsp; <kbd>B</kbd>/<kbd>Esc</kbd> close
+        <kbd>↑</kbd>/<kbd>↓</kbd> select &nbsp;·&nbsp;
+        <kbd>←</kbd>/<kbd>→</kbd> tab &nbsp;·&nbsp;
+        <kbd>Enter</kbd> buy &nbsp;·&nbsp;
+        <kbd>B</kbd>/<kbd>Esc</kbd> close
       </div>
     `;
     return root;

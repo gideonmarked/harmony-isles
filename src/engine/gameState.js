@@ -176,6 +176,28 @@ function reduce(state, action) {
       else next[action.itemId] = have - 1;
       return { ...state, inventory: next };
     }
+    case 'GRANT_ITEM': {
+      const { itemId, count } = action;
+      const inc = Math.max(0, count ?? 1);
+      if (inc === 0) return state;
+      const have = state.inventory[itemId] ?? 0;
+      return {
+        ...state,
+        inventory: { ...state.inventory, [itemId]: have + inc },
+      };
+    }
+    case 'PURCHASE_ITEM': {
+      const { itemId, price, count } = action;
+      const inc = Math.max(1, count ?? 1);
+      const cost = (price ?? 0) * inc;
+      if (state.manager.notes < cost) return state;
+      const have = state.inventory[itemId] ?? 0;
+      return {
+        ...state,
+        manager: { ...state.manager, notes: state.manager.notes - cost },
+        inventory: { ...state.inventory, [itemId]: have + inc },
+      };
+    }
     case 'PURCHASE_ISLAND': {
       const { islandId, price } = action;
       if (state.world.ownedIslands.includes(islandId)) return state;
