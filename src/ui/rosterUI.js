@@ -81,6 +81,14 @@ class RosterUI {
       case 'KeyT':
         this.#toggleTeam();
         break;
+      case 'BracketLeft':
+      case 'Comma':
+        this.#moveTeamMember(-1);
+        break;
+      case 'BracketRight':
+      case 'Period':
+        this.#moveTeamMember(1);
+        break;
       case 'Escape':
       case 'KeyR': {
         const cb = this.#onClose;
@@ -124,6 +132,46 @@ class RosterUI {
       dispatch({ type: 'ADD_TO_TEAM', id });
       this.#flash(`${member.name} added to team.`);
     }
+  }
+
+  /**
+   * Swap the selected team member with the one `dir` slots up (-1)
+   * or down (+1) in turn order. No-ops if the selection is on the
+   * bench or already at the edge of the team list. Re-anchors
+   * `#selected` so the cursor follows the card after the dispatch
+   * triggers a state-change re-render.
+   *
+   * @param {-1 | 1} dir
+   */
+  #moveTeamMember(dir) {
+    const id = this.#ids[this.#selected];
+    if (!id) return;
+    const s = getState();
+    const teamIdx = s.team.indexOf(id);
+    if (teamIdx < 0) {
+      this.#flash('Bench members have no turn order — add to team first.');
+      return;
+    }
+    const targetIdx = teamIdx + dir;
+    if (targetIdx < 0 || targetIdx >= s.team.length) {
+      this.#flash(
+        dir < 0
+          ? 'Already first in turn order.'
+          : 'Already last in turn order.'
+      );
+      return;
+    }
+    const next = s.team.slice();
+    [next[teamIdx], next[targetIdx]] = [next[targetIdx], next[teamIdx]];
+    dispatch({ type: 'REORDER_TEAM', order: next });
+    // The team always renders at the top of the list, so the new
+    // sort position lines up 1:1 with the new team index.
+    this.#selected = targetIdx;
+    const member = s.roster[id];
+    this.#flash(
+      `${member?.name ?? id} → turn ${targetIdx + 1}` +
+        (dir < 0 ? ' (earlier)' : ' (later)')
+    );
   }
 
   /** @param {string} text */
@@ -191,7 +239,7 @@ class RosterUI {
               <span class="rarity rarity-${m.rarity}">${m.rarity}</span>
             </div>
             <div class="exp">EXP ${m.exp.toLocaleString()} / ${expCap.toLocaleString()}</div>
-            <div class="hint">${idx === this.#selected ? 'Press T to ' + (inTeam ? 'bench' : 'add to team') : ' '}</div>
+            <div class="hint">${idx === this.#selected ? (inTeam ? 'T to bench · [ / ] reorder turn' : 'T to add to team') : ' '}</div>
           </div>`;
       })
       .join('');
@@ -308,6 +356,7 @@ class RosterUI {
       <div class="controls">
         <kbd>↑</kbd>/<kbd>↓</kbd> select &nbsp;·&nbsp;
         <kbd>T</kbd> toggle team &nbsp;·&nbsp;
+        <kbd>[</kbd>/<kbd>]</kbd> reorder &nbsp;·&nbsp;
         <kbd>R</kbd>/<kbd>Esc</kbd> close
       </div>
     `;
