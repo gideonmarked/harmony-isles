@@ -253,7 +253,16 @@ class SaveSystem {
    */
   attachAutoSave() {
     this.#unsubs.push(
-      eventBus.on('battle.gameOver', () => this.scheduleSave()),
+      eventBus.on('battle.gameOver', (payload) => {
+        // Skip the save on defeat — the player should be able to
+        // "retry from last save" and roll back to the pre-battle
+        // checkpoint (typically the ENTER_ISLAND save). Without this
+        // skip, the post-defeat state would overwrite that checkpoint
+        // and the retry would just replay the wipe.
+        const outcome = /** @type {{ outcome?: string }} */ (payload ?? {}).outcome;
+        if (outcome === 'defeat') return;
+        this.scheduleSave();
+      }),
       eventBus.on('shop.islandPurchased', () => this.scheduleSave()),
       eventBus.on('stateChanged', (payload) => {
         const action = /** @type {{ action: { type: string } }} */ (
