@@ -2,6 +2,8 @@
 
 import * as THREE from 'three';
 
+import { assetLoader } from '../engine/assetLoader.js';
+
 /**
  * @typedef {object} CharacterStats
  * @property {number} technicality   widens the rhythm 'perfect' window
@@ -19,6 +21,9 @@ import * as THREE from 'three';
  * @property {number} hpMax
  * @property {number} mpMax
  * @property {THREE.ColorRepresentation} [color]   placeholder quad color
+ * @property {string} [assetKey]                   override for asset manifest lookup;
+ *                                                  defaults to id stripped of `tN:` /
+ *                                                  `enemy:` prefix
  */
 
 const IDLE_AMPLITUDE = 0.05;
@@ -46,13 +51,43 @@ export class Character {
     this.mpMax = init.mpMax;
     this.mp = init.mpMax;
 
-    this.mesh = new THREE.Mesh(
-      new THREE.BoxGeometry(0.8, 1.6, 0.4),
-      new THREE.MeshStandardMaterial({
-        color: init.color ?? (init.isPlayer ? 0x6ec1ff : 0xe85a5a),
-      })
-    );
-    this.mesh.position.y = 0.8;
+    // Asset lookup — strip the battle-id prefix (`t0:`, `enemy:`) so
+    // the same key matches both the captured roster member and a
+    // freshly-spawned enemy of the same template.
+    const rawKey = init.assetKey ?? init.id;
+    const assetKey = `sprites.characters.${rawKey.split(':').pop()}`;
+
+    if (assetLoader.hasManifestEntry(assetKey)) {
+      // Real sprite registered — render as a billboarded plane and
+      // load the texture asynchronously. The plane keeps its
+      // facing-the-camera orientation through the orthographic-iso
+      // view, so a 2D sprite reads correctly on the 3D stage. The
+      // material uses transparency so PNGs with alpha don't render
+      // a black square while loading.
+      const material = new THREE.MeshBasicMaterial({
+        color: 0xffffff,
+        transparent: true,
+        side: THREE.DoubleSide,
+      });
+      this.mesh = new THREE.Mesh(new THREE.PlaneGeometry(1.0, 1.6), material);
+      this.mesh.position.y = 0.8;
+      assetLoader.loadTexture(assetKey).then((tex) => {
+        material.map = tex;
+        material.needsUpdate = true;
+      });
+    } else {
+      // No manifest entry — keep the colored placeholder cuboid so
+      // the slice still renders something obvious. (The magenta-bbox
+      // fallback only kicks in for *registered* ids whose files fail
+      // to load, per §27.9.)
+      this.mesh = new THREE.Mesh(
+        new THREE.BoxGeometry(0.8, 1.6, 0.4),
+        new THREE.MeshStandardMaterial({
+          color: init.color ?? (init.isPlayer ? 0x6ec1ff : 0xe85a5a),
+        })
+      );
+      this.mesh.position.y = 0.8;
+    }
 
     /** Rest position the animation system perturbs around. */
     this.basePosition = { x: 0, y: 0.8, z: 0 };
