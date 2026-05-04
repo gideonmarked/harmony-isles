@@ -42,7 +42,8 @@
       "Bash(wsl.exe -d Ubuntu -- bash -lc 'cd /home/gideonmarked/Projects/harmony-isles && node --check src/util/pointer.js; echo pointer: $?')",
       "Bash(wsl.exe -d Ubuntu -- bash -lc 'cd /home/gideonmarked/Projects/harmony-isles && for f in src/ui/shopUI.js src/ui/itemMenu.js src/ui/rhythmUI.js src/ui/battleHud.js src/scenes/battleScene.js; do node --check \"$f\" || echo \"FAILED: $f\"; done; echo done')",
       "Bash(wsl.exe -d Ubuntu -- bash -lc 'cd /home/gideonmarked/Projects/harmony-isles && for f in src/engine/gameState.js src/engine/saveSystem.js src/scenes/battleScene.js src/ui/rosterUI.js; do node --check \"$f\" || echo \"FAILED: $f\"; done; echo done')",
-      "Bash(wsl.exe -d Ubuntu -- bash -lc 'cd /home/gideonmarked/Projects/harmony-isles && node --check src/entities/playerOverworld.js; echo player: $?')"
+      "Bash(wsl.exe -d Ubuntu -- bash -lc 'cd /home/gideonmarked/Projects/harmony-isles && node --check src/entities/playerOverworld.js; echo player: $?')",
+      "Bash(wsl.exe -d Ubuntu -- bash -lc 'cd /home/gideonmarked/Projects/harmony-isles && node --check vite.config.js; echo vite: $?')"
     ]
   }
 }
