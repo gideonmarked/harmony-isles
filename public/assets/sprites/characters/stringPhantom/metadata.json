@@ -1,0 +1,82 @@
+{
+  "character": {
+    "id": "ced66b0e-1e72-4edd-a046-6ebc6afee23e",
+    "name": "jazz guitarist holding a semi hollow\n",
+    "prompt": "jazz guitarist holding a semi hollow\n",
+    "size": {
+      "width": 124,
+      "height": 124
+    },
+    "template_id": "mannequin",
+    "directions": 8,
+    "view": "low top-down",
+    "created_at": "2026-04-30T02:46:03.135484+00:00"
+  },
+  "frames": {
+    "rotations": {
+      "south": "rotations/south.png",
+      "south-east": "rotations/south-east.png",
+      "east": "rotations/east.png",
+      "north-east": "rotations/north-east.png",
+      "north": "rotations/north.png",
+      "north-west": "rotations/north-west.png",
+      "west": "rotations/west.png",
+      "south-west": "rotations/south-west.png"
+    },
+    "animations": {
+      "Fight_Stance_Idle-2fcdc32c": {
+        "south-east": [
+          "animations/Fight_Stance_Idle-2fcdc32c/south-east/frame_000.png",
+          "animations/Fight_Stance_Idle-2fcdc32c/south-east/frame_001.png",
+          "animations/Fight_Stance_Idle-2fcdc32c/south-east/frame_002.png",
+          "animations/Fight_Stance_Idle-2fcdc32c/south-east/frame_003.png",
+          "animations/Fight_Stance_Idle-2fcdc32c/south-east/frame_004.png",
+          "animations/Fight_Stance_Idle-2fcdc32c/south-east/frame_005.png",
+          "animations/Fight_Stance_Idle-2fcdc32c/south-east/frame_006.png",
+          "animations/Fight_Stance_Idle-2fcdc32c/south-east/frame_007.png"
+        ]
+      },
+      "STRUMING_the_guitar_passionately_with_ice_and_cold-5e674119": {
+        "south-east": [
+          "animations/STRUMING_the_guitar_passionately_with_ice_and_cold-5e674119/south-east/frame_000.png",
+          "animations/STRUMING_the_guitar_passionately_with_ice_and_cold-5e674119/south-east/frame_001.png",
+          "animations/STRUMING_the_guitar_passionately_with_ice_and_cold-5e674119/south-east/frame_002.png",
+          "animations/STRUMING_the_guitar_passionately_with_ice_and_cold-5e674119/south-east/frame_003.png",
+          "animations/STRUMING_the_guitar_passionately_with_ice_and_cold-5e674119/south-east/frame_004.png",
+          "animations/STRUMING_the_guitar_passionately_with_ice_and_cold-5e674119/south-east/frame_005.png",
+          "animations/STRUMING_the_guitar_passionately_with_ice_and_cold-5e674119/south-east/frame_006.png",
+          "animations/STRUMING_the_guitar_passionately_with_ice_and_cold-5e674119/south-east/frame_007.png",
+          "animations/STRUMING_the_guitar_passionately_with_ice_and_cold-5e674119/south-east/frame_008.png"
+        ]
+      },
+      "doing_one_powerful_strum-e1b63dff": {
+        "south-east": [
+          "animations/doing_one_powerful_strum-e1b63dff/south-east/frame_000.png",
+          "animations/doing_one_powerful_strum-e1b63dff/south-east/frame_001.png",
+          "animations/doing_one_powerful_strum-e1b63dff/south-east/frame_002.png",
+          "animations/doing_one_powerful_strum-e1b63dff/south-east/frame_003.png",
+          "animations/doing_one_powerful_strum-e1b63dff/south-east/frame_004.png",
+          "animations/doing_one_powerful_strum-e1b63dff/south-east/frame_005.png",
+          "animations/doing_one_powerful_strum-e1b63dff/south-east/frame_006.png",
+          "animations/doing_one_powerful_strum-e1b63dff/south-east/frame_007.png",
+          "animations/doing_one_powerful_strum-e1b63dff/south-east/frame_008.png"
+        ]
+      },
+      "right_arm_raised_preparing_to-98c055f7": {
+        "south-east": [
+          "animations/right_arm_raised_preparing_to-98c055f7/south-east/frame_000.png",
+          "animations/right_arm_raised_preparing_to-98c055f7/south-east/frame_001.png",
+          "animations/right_arm_raised_preparing_to-98c055f7/south-east/frame_002.png",
+          "animations/right_arm_raised_preparing_to-98c055f7/south-east/frame_003.png",
+          "animations/right_arm_raised_preparing_to-98c055f7/south-east/frame_004.png",
+          "animations/right_arm_raised_preparing_to-98c055f7/south-east/frame_005.png",
+          "animations/right_arm_raised_preparing_to-98c055f7/south-east/frame_006.png",
+          "animations/right_arm_raised_preparing_to-98c055f7/south-east/frame_007.png",
+          "animations/right_arm_raised_preparing_to-98c055f7/south-east/frame_008.png"
+        ]
+      }
+    }
+  },
+  "export_version": "2.0",
+  "export_date": "2026-05-01T11:58:24.620596"
+}

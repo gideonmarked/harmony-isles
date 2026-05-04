@@ -1,0 +1,78 @@
+{
+  "character": {
+    "id": "df7f0992-1e9b-45f0-9888-9ce834255237",
+    "name": "male jazz singer with mic in cream suit",
+    "prompt": "male jazz singer with mic in cream suit",
+    "size": {
+      "width": 124,
+      "height": 124
+    },
+    "template_id": "mannequin",
+    "directions": 8,
+    "view": "low top-down",
+    "created_at": "2026-04-30T06:18:18.411458+00:00"
+  },
+  "frames": {
+    "rotations": {
+      "south": "rotations/south.png",
+      "south-east": "rotations/south-east.png",
+      "east": "rotations/east.png",
+      "north-east": "rotations/north-east.png",
+      "north": "rotations/north.png",
+      "north-west": "rotations/north-west.png",
+      "west": "rotations/west.png",
+      "south-west": "rotations/south-west.png"
+    },
+    "animations": {
+      "Fight_Stance_Idle-f25212fe": {
+        "south-east": [
+          "animations/Fight_Stance_Idle-f25212fe/south-east/frame_000.png",
+          "animations/Fight_Stance_Idle-f25212fe/south-east/frame_001.png",
+          "animations/Fight_Stance_Idle-f25212fe/south-east/frame_002.png",
+          "animations/Fight_Stance_Idle-f25212fe/south-east/frame_003.png",
+          "animations/Fight_Stance_Idle-f25212fe/south-east/frame_004.png",
+          "animations/Fight_Stance_Idle-f25212fe/south-east/frame_005.png",
+          "animations/Fight_Stance_Idle-f25212fe/south-east/frame_006.png",
+          "animations/Fight_Stance_Idle-f25212fe/south-east/frame_007.png"
+        ]
+      },
+      "perfoming_and_singing_surrounded_by_lightning_aura-6f5ebd5a": {
+        "south-east": [
+          "animations/perfoming_and_singing_surrounded_by_lightning_aura-6f5ebd5a/south-east/frame_000.png",
+          "animations/perfoming_and_singing_surrounded_by_lightning_aura-6f5ebd5a/south-east/frame_001.png",
+          "animations/perfoming_and_singing_surrounded_by_lightning_aura-6f5ebd5a/south-east/frame_002.png",
+          "animations/perfoming_and_singing_surrounded_by_lightning_aura-6f5ebd5a/south-east/frame_003.png",
+          "animations/perfoming_and_singing_surrounded_by_lightning_aura-6f5ebd5a/south-east/frame_004.png",
+          "animations/perfoming_and_singing_surrounded_by_lightning_aura-6f5ebd5a/south-east/frame_005.png",
+          "animations/perfoming_and_singing_surrounded_by_lightning_aura-6f5ebd5a/south-east/frame_006.png",
+          "animations/perfoming_and_singing_surrounded_by_lightning_aura-6f5ebd5a/south-east/frame_007.png",
+          "animations/perfoming_and_singing_surrounded_by_lightning_aura-6f5ebd5a/south-east/frame_008.png"
+        ]
+      },
+      "right_arm_raised-b7ee8861": {
+        "south-east": [
+          "animations/right_arm_raised-b7ee8861/south-east/frame_000.png",
+          "animations/right_arm_raised-b7ee8861/south-east/frame_001.png",
+          "animations/right_arm_raised-b7ee8861/south-east/frame_002.png",
+          "animations/right_arm_raised-b7ee8861/south-east/frame_003.png",
+          "animations/right_arm_raised-b7ee8861/south-east/frame_004.png"
+        ]
+      },
+      "1_powerful_yell-c86da3af": {
+        "south-east": [
+          "animations/1_powerful_yell-c86da3af/south-east/frame_000.png",
+          "animations/1_powerful_yell-c86da3af/south-east/frame_001.png",
+          "animations/1_powerful_yell-c86da3af/south-east/frame_002.png",
+          "animations/1_powerful_yell-c86da3af/south-east/frame_003.png",
+          "animations/1_powerful_yell-c86da3af/south-east/frame_004.png",
+          "animations/1_powerful_yell-c86da3af/south-east/frame_005.png",
+          "animations/1_powerful_yell-c86da3af/south-east/frame_006.png",
+          "animations/1_powerful_yell-c86da3af/south-east/frame_007.png",
+          "animations/1_powerful_yell-c86da3af/south-east/frame_008.png"
+        ]
+      }
+    }
+  },
+  "export_version": "2.0",
+  "export_date": "2026-05-01T12:16:06.512713"
+}

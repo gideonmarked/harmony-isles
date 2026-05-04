@@ -1,0 +1,78 @@
+{
+  "character": {
+    "id": "cf909a82-9bea-4939-b21f-ec69ab2e85d6",
+    "name": "female singer",
+    "prompt": "female singer",
+    "size": {
+      "width": 124,
+      "height": 124
+    },
+    "template_id": "mannequin",
+    "directions": 8,
+    "view": "low top-down",
+    "created_at": "2026-04-30T06:34:36.330378+00:00"
+  },
+  "frames": {
+    "rotations": {
+      "south": "rotations/south.png",
+      "south-east": "rotations/south-east.png",
+      "east": "rotations/east.png",
+      "north-east": "rotations/north-east.png",
+      "north": "rotations/north.png",
+      "north-west": "rotations/north-west.png",
+      "west": "rotations/west.png",
+      "south-west": "rotations/south-west.png"
+    },
+    "animations": {
+      "Fight_Stance_Idle-7394698c": {
+        "south-east": [
+          "animations/Fight_Stance_Idle-7394698c/south-east/frame_000.png",
+          "animations/Fight_Stance_Idle-7394698c/south-east/frame_001.png",
+          "animations/Fight_Stance_Idle-7394698c/south-east/frame_002.png",
+          "animations/Fight_Stance_Idle-7394698c/south-east/frame_003.png",
+          "animations/Fight_Stance_Idle-7394698c/south-east/frame_004.png",
+          "animations/Fight_Stance_Idle-7394698c/south-east/frame_005.png",
+          "animations/Fight_Stance_Idle-7394698c/south-east/frame_006.png",
+          "animations/Fight_Stance_Idle-7394698c/south-east/frame_007.png"
+        ]
+      },
+      "1_big_powerful_yell-07799df1": {
+        "south-east": [
+          "animations/1_big_powerful_yell-07799df1/south-east/frame_000.png",
+          "animations/1_big_powerful_yell-07799df1/south-east/frame_001.png",
+          "animations/1_big_powerful_yell-07799df1/south-east/frame_002.png",
+          "animations/1_big_powerful_yell-07799df1/south-east/frame_003.png",
+          "animations/1_big_powerful_yell-07799df1/south-east/frame_004.png",
+          "animations/1_big_powerful_yell-07799df1/south-east/frame_005.png",
+          "animations/1_big_powerful_yell-07799df1/south-east/frame_006.png",
+          "animations/1_big_powerful_yell-07799df1/south-east/frame_007.png",
+          "animations/1_big_powerful_yell-07799df1/south-east/frame_008.png"
+        ]
+      },
+      "singing_passionately_with_amazing_aura_surrounding-e168ad68": {
+        "south-east": [
+          "animations/singing_passionately_with_amazing_aura_surrounding-e168ad68/south-east/frame_000.png",
+          "animations/singing_passionately_with_amazing_aura_surrounding-e168ad68/south-east/frame_001.png",
+          "animations/singing_passionately_with_amazing_aura_surrounding-e168ad68/south-east/frame_002.png",
+          "animations/singing_passionately_with_amazing_aura_surrounding-e168ad68/south-east/frame_003.png",
+          "animations/singing_passionately_with_amazing_aura_surrounding-e168ad68/south-east/frame_004.png",
+          "animations/singing_passionately_with_amazing_aura_surrounding-e168ad68/south-east/frame_005.png",
+          "animations/singing_passionately_with_amazing_aura_surrounding-e168ad68/south-east/frame_006.png",
+          "animations/singing_passionately_with_amazing_aura_surrounding-e168ad68/south-east/frame_007.png",
+          "animations/singing_passionately_with_amazing_aura_surrounding-e168ad68/south-east/frame_008.png"
+        ]
+      },
+      "right_arm_hand_raised-a20587d6": {
+        "south-east": [
+          "animations/right_arm_hand_raised-a20587d6/south-east/frame_000.png",
+          "animations/right_arm_hand_raised-a20587d6/south-east/frame_001.png",
+          "animations/right_arm_hand_raised-a20587d6/south-east/frame_002.png",
+          "animations/right_arm_hand_raised-a20587d6/south-east/frame_003.png",
+          "animations/right_arm_hand_raised-a20587d6/south-east/frame_004.png"
+        ]
+      }
+    }
+  },
+  "export_version": "2.0",
+  "export_date": "2026-05-01T11:52:23.574417"
+}

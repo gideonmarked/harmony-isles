@@ -1,0 +1,78 @@
+{
+  "character": {
+    "id": "8d5d46b1-5795-4b5b-9bc1-f95177b3efae",
+    "name": "male drummer",
+    "prompt": "male drummer",
+    "size": {
+      "width": 124,
+      "height": 124
+    },
+    "template_id": "mannequin",
+    "directions": 8,
+    "view": "low top-down",
+    "created_at": "2026-04-30T06:33:24.155847+00:00"
+  },
+  "frames": {
+    "rotations": {
+      "south": "rotations/south.png",
+      "south-east": "rotations/south-east.png",
+      "east": "rotations/east.png",
+      "north-east": "rotations/north-east.png",
+      "north": "rotations/north.png",
+      "north-west": "rotations/north-west.png",
+      "west": "rotations/west.png",
+      "south-west": "rotations/south-west.png"
+    },
+    "animations": {
+      "Fight_Stance_Idle-4384d7fb": {
+        "south-east": [
+          "animations/Fight_Stance_Idle-4384d7fb/south-east/frame_000.png",
+          "animations/Fight_Stance_Idle-4384d7fb/south-east/frame_001.png",
+          "animations/Fight_Stance_Idle-4384d7fb/south-east/frame_002.png",
+          "animations/Fight_Stance_Idle-4384d7fb/south-east/frame_003.png",
+          "animations/Fight_Stance_Idle-4384d7fb/south-east/frame_004.png",
+          "animations/Fight_Stance_Idle-4384d7fb/south-east/frame_005.png",
+          "animations/Fight_Stance_Idle-4384d7fb/south-east/frame_006.png",
+          "animations/Fight_Stance_Idle-4384d7fb/south-east/frame_007.png"
+        ]
+      },
+      "playing_the_drums_passionately_with_a_lot_of_surro-b8a23436": {
+        "south-east": [
+          "animations/playing_the_drums_passionately_with_a_lot_of_surro-b8a23436/south-east/frame_000.png",
+          "animations/playing_the_drums_passionately_with_a_lot_of_surro-b8a23436/south-east/frame_001.png",
+          "animations/playing_the_drums_passionately_with_a_lot_of_surro-b8a23436/south-east/frame_002.png",
+          "animations/playing_the_drums_passionately_with_a_lot_of_surro-b8a23436/south-east/frame_003.png",
+          "animations/playing_the_drums_passionately_with_a_lot_of_surro-b8a23436/south-east/frame_004.png",
+          "animations/playing_the_drums_passionately_with_a_lot_of_surro-b8a23436/south-east/frame_005.png",
+          "animations/playing_the_drums_passionately_with_a_lot_of_surro-b8a23436/south-east/frame_006.png",
+          "animations/playing_the_drums_passionately_with_a_lot_of_surro-b8a23436/south-east/frame_007.png",
+          "animations/playing_the_drums_passionately_with_a_lot_of_surro-b8a23436/south-east/frame_008.png"
+        ]
+      },
+      "both_arms_raised-3006b18c": {
+        "south-east": [
+          "animations/both_arms_raised-3006b18c/south-east/frame_000.png",
+          "animations/both_arms_raised-3006b18c/south-east/frame_001.png",
+          "animations/both_arms_raised-3006b18c/south-east/frame_002.png",
+          "animations/both_arms_raised-3006b18c/south-east/frame_003.png",
+          "animations/both_arms_raised-3006b18c/south-east/frame_004.png"
+        ]
+      },
+      "hitting_the_drums_ones_powerfully-a59f06b9": {
+        "south-east": [
+          "animations/hitting_the_drums_ones_powerfully-a59f06b9/south-east/frame_000.png",
+          "animations/hitting_the_drums_ones_powerfully-a59f06b9/south-east/frame_001.png",
+          "animations/hitting_the_drums_ones_powerfully-a59f06b9/south-east/frame_002.png",
+          "animations/hitting_the_drums_ones_powerfully-a59f06b9/south-east/frame_003.png",
+          "animations/hitting_the_drums_ones_powerfully-a59f06b9/south-east/frame_004.png",
+          "animations/hitting_the_drums_ones_powerfully-a59f06b9/south-east/frame_005.png",
+          "animations/hitting_the_drums_ones_powerfully-a59f06b9/south-east/frame_006.png",
+          "animations/hitting_the_drums_ones_powerfully-a59f06b9/south-east/frame_007.png",
+          "animations/hitting_the_drums_ones_powerfully-a59f06b9/south-east/frame_008.png"
+        ]
+      }
+    }
+  },
+  "export_version": "2.0",
+  "export_date": "2026-05-01T12:18:05.891364"
+}

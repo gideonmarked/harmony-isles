@@ -11,6 +11,7 @@ import { Island } from '../world/island.js';
 import { PlayerOverworld } from '../entities/playerOverworld.js';
 import { encounterSystem } from '../systems/encounterSystem.js';
 import { exploreHud } from '../ui/exploreHud.js';
+import { shopUI } from '../ui/shopUI.js';
 import { RNG } from '../util/rng.js';
 
 /**
@@ -63,6 +64,16 @@ export const exploreScene = (() => {
 
   /** Locks movement during the telegraph → battle handoff. */
   let isHandingOff = false;
+  /** True while the shop overlay owns input on this island. */
+  let shopOpen = false;
+
+  function openShop() {
+    if (shopOpen) return;
+    shopOpen = true;
+    shopUI.show(() => {
+      shopOpen = false;
+    });
+  }
 
   /** @param {() => void} fn @param {number} ms */
   function delay(fn, ms) {
@@ -144,7 +155,11 @@ export const exploreScene = (() => {
       encounterSystem.startPostBattleCooldown();
 
       exploreHud.show();
-      exploreHud.setIsland({ name: island.name, rarity: island.rarity });
+      exploreHud.setIsland({
+        name: island.name,
+        rarity: island.rarity,
+        shopAvailable: islandId === 'musicPlaza',
+      });
 
       const cred = getState().manager.credibility;
       unsubs.push(
@@ -183,10 +198,20 @@ export const exploreScene = (() => {
           /** @param {{ code: string }} payload */
           (payload) => {
             if (!payload) return;
+            // Shop overlay owns input while open — let it handle its
+            // own Esc/B close before the scene's exit binding fires.
+            if (shopOpen) return;
+            if (payload.code === 'KeyB') {
+              // Shop only opens while standing inside Music Plaza —
+              // the dedicated hub. Anywhere else, B is a no-op.
+              if (getState().world.currentIslandId === 'musicPlaza') {
+                openShop();
+              }
+              return;
+            }
             if (payload.code === 'Escape' || payload.code === 'KeyM') {
               // M (or Esc) returns to the world map per design doc
-              // §31.3. From there the player can hop islands or
-              // visit the shop without round-tripping through Title.
+              // §31.3.
               sceneManager.transition('worldMap');
             }
           }
@@ -197,7 +222,7 @@ export const exploreScene = (() => {
     },
 
     update(dt) {
-      if (isHandingOff) return;
+      if (isHandingOff || shopOpen) return;
       player?.update(dt);
     },
 
@@ -206,6 +231,11 @@ export const exploreScene = (() => {
       unsubs = [];
       for (const t of timers) clearTimeout(t);
       timers = [];
+
+      if (shopOpen) {
+        shopUI.hide();
+        shopOpen = false;
+      }
 
       exploreHud.hide();
 

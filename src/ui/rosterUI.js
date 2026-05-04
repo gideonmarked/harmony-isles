@@ -2,6 +2,9 @@
 
 import { eventBus } from '../engine/eventBus.js';
 import { getState, dispatch, expToNextRank } from '../engine/gameState.js';
+import { computeMemberStats } from '../util/characterStats.js';
+import { bindAsClick, bindAsKey } from '../util/pointer.js';
+import { ROSTER_MAX } from '../engine/gameState.js';
 
 /**
  * Roster UI — view captures + manage team membership.
@@ -23,8 +26,22 @@ class RosterUI {
   #root = null;
   /** @type {(() => void)[]} */
   #unsubs = [];
+  /** @type {(() => void)[]} */
+  #cardUnbinds = [];
+  /** @type {(() => void)[]} */
+  #buttonUnbinds = [];
   /** @type {(() => void) | null} */
   #onClose = null;
+
+  /**
+   * Two-tap "Let Go" pattern — first tap arms a release for the
+   * selected member, second tap within ~3s commits. Stored as the
+   * id we're armed on so switching cards mid-confirm cancels.
+   * @type {string | null}
+   */
+  #armedReleaseId = null;
+  /** @type {ReturnType<typeof setTimeout> | null} */
+  #releaseArmTimer = null;
   /** @type {string[]} */
   #ids = [];
   /** @type {number} */
@@ -45,15 +62,31 @@ class RosterUI {
       eventBus.on('input.keyDown', (p) => this.#onKey(p)),
       eventBus.on('stateChanged', () => this.#refresh())
     );
+    // Footer buttons mirror the keyboard shortcuts.
+    this.#root.querySelectorAll('.actions button[data-key]').forEach((btn) => {
+      const code = btn.getAttribute('data-key');
+      if (code) this.#buttonUnbinds.push(
+        bindAsKey(/** @type {HTMLElement} */ (btn), code)
+      );
+    });
   }
 
   hide() {
     for (const u of this.#unsubs) u();
     this.#unsubs = [];
+    for (const u of this.#cardUnbinds) u();
+    this.#cardUnbinds = [];
+    for (const u of this.#buttonUnbinds) u();
+    this.#buttonUnbinds = [];
     if (this.#flashTimer) {
       clearTimeout(this.#flashTimer);
       this.#flashTimer = null;
     }
+    if (this.#releaseArmTimer) {
+      clearTimeout(this.#releaseArmTimer);
+      this.#releaseArmTimer = null;
+    }
+    this.#armedReleaseId = null;
     this.#root?.remove();
     this.#root = null;
     this.#onClose = null;
@@ -66,6 +99,7 @@ class RosterUI {
       case 'ArrowUp':
       case 'KeyW':
         if (this.#ids.length > 0) {
+          this.#cancelArmedRelease();
           this.#selected =
             (this.#selected - 1 + this.#ids.length) % this.#ids.length;
           this.#refresh();
@@ -74,6 +108,7 @@ class RosterUI {
       case 'ArrowDown':
       case 'KeyS':
         if (this.#ids.length > 0) {
+          this.#cancelArmedRelease();
           this.#selected = (this.#selected + 1) % this.#ids.length;
           this.#refresh();
         }
@@ -88,6 +123,9 @@ class RosterUI {
       case 'BracketRight':
       case 'Period':
         this.#moveTeamMember(1);
+        break;
+      case 'KeyX':
+        this.#releaseSelected();
         break;
       case 'Escape':
       case 'KeyR': {
@@ -174,6 +212,48 @@ class RosterUI {
     );
   }
 
+  /**
+   * "Let Go" — release the selected member from the roster. Two-tap
+   * confirm: first tap arms (flash "Tap X again to release {name}"),
+   * second tap within 3 s commits. Switching cards or letting the
+   * timer expire cancels the arming.
+   */
+  #releaseSelected() {
+    const id = this.#ids[this.#selected];
+    if (!id) return;
+    const s = getState();
+    const member = s.roster[id];
+    if (!member) return;
+    if (s.team.includes(id) && s.team.length === 1) {
+      this.#flash(`Can't release ${member.name} — your team would be empty.`);
+      return;
+    }
+    if (this.#armedReleaseId === id) {
+      // Confirmed — commit and clear.
+      this.#cancelArmedRelease();
+      dispatch({ type: 'RELEASE_RIVAL', id });
+      this.#flash(`${member.name} released.`);
+      return;
+    }
+    // First press — arm and start the cancel timer.
+    this.#armedReleaseId = id;
+    this.#flash(`Tap X again to release ${member.name}.`);
+    if (this.#releaseArmTimer) clearTimeout(this.#releaseArmTimer);
+    this.#releaseArmTimer = setTimeout(() => {
+      this.#armedReleaseId = null;
+      this.#releaseArmTimer = null;
+    }, 3000);
+  }
+
+  /** Cancel any in-flight release arming (selection change, hide). */
+  #cancelArmedRelease() {
+    if (this.#releaseArmTimer) {
+      clearTimeout(this.#releaseArmTimer);
+      this.#releaseArmTimer = null;
+    }
+    this.#armedReleaseId = null;
+  }
+
   /** @param {string} text */
   #flash(text) {
     this.#flashMessage = text;
@@ -200,7 +280,7 @@ class RosterUI {
     const summary = this.#root.querySelector('[data-bind="summary"]');
     if (summary) {
       summary.textContent =
-        `${this.#ids.length} member${this.#ids.length === 1 ? '' : 's'} captured` +
+        `${this.#ids.length} / ${ROSTER_MAX} captured` +
         `  ·  ${s.team.length} on team`;
     }
 
@@ -220,6 +300,11 @@ class RosterUI {
         </div>`;
       return;
     }
+    // Cards are recreated each refresh, so any prior click bindings
+    // are dangling. Drop them before rebuilding.
+    for (const u of this.#cardUnbinds) u();
+    this.#cardUnbinds = [];
+
     list.innerHTML = this.#ids
       .map((id, idx) => {
         const m = s.roster[id];
@@ -228,6 +313,10 @@ class RosterUI {
         const teamBadge = inTeam
           ? `<span class="team-badge">TEAM ${s.team.indexOf(id) + 1}</span>`
           : '';
+        // Same scaling battleScene applies — what this member would
+        // walk onto the stage with right now.
+        const battle = computeMemberStats(m);
+        const st = battle.stats;
         return /* html */ `
           <div class="card ${idx === this.#selected ? 'active' : ''} ${inTeam ? 'in-team' : ''}" data-idx="${idx}">
             <div class="head">
@@ -239,10 +328,39 @@ class RosterUI {
               <span class="rarity rarity-${m.rarity}">${m.rarity}</span>
             </div>
             <div class="exp">EXP ${m.exp.toLocaleString()} / ${expCap.toLocaleString()}</div>
+            <div class="hpmp">HP ${battle.hpMax} &nbsp;&middot;&nbsp; Energy ${battle.mpMax}</div>
+            <div class="stats">
+              <span title="Technicality — widens Perfect window">T ${st.technicality}</span>
+              <span title="Focus — turn speed / dodge">F ${st.focus}</span>
+              <span title="Groove — physical perform damage">G ${st.groove}</span>
+              <span title="Confidence — defense / HP scaling">C ${st.confidence}</span>
+              <span title="Creativity — skill perform damage">Cr ${st.creativity}</span>
+              <span title="Energy — perform resource">E ${st.energy}</span>
+            </div>
             <div class="hint">${idx === this.#selected ? (inTeam ? 'T to bench · [ / ] reorder turn' : 'T to add to team') : ' '}</div>
           </div>`;
       })
       .join('');
+
+    // Bind tap-to-select. Tapping the already-selected card commits
+    // the toggle (mirrors keyboard "select then press T"). One tap
+    // for unselected cards; two for the toggle action.
+    list.querySelectorAll('.card[data-idx]').forEach((cardEl) => {
+      const idxAttr = cardEl.getAttribute('data-idx');
+      const idx = idxAttr ? Number(idxAttr) : -1;
+      if (idx < 0) return;
+      this.#cardUnbinds.push(
+        bindAsClick(/** @type {HTMLElement} */ (cardEl), () => {
+          if (idx === this.#selected) {
+            this.#toggleTeam();
+          } else {
+            this.#cancelArmedRelease();
+            this.#selected = idx;
+            this.#refresh();
+          }
+        })
+      );
+    });
   }
 
   /** @returns {HTMLElement} */
@@ -335,6 +453,19 @@ class RosterUI {
         #roster-overlay .rarity-epic      { color: #c77dff; }
         #roster-overlay .rarity-legendary { color: #ffd166; }
         #roster-overlay .exp { margin-top: 8px; font-size: 12px; color: #6ec1ff; }
+        #roster-overlay .hpmp {
+          margin-top: 6px; font-size: 12px; color: #fffae0;
+          letter-spacing: 0.5px;
+        }
+        #roster-overlay .stats {
+          margin-top: 4px; display: flex; flex-wrap: wrap; gap: 6px;
+          font-size: 11px; color: #c8d4e0;
+        }
+        #roster-overlay .stats span {
+          padding: 1px 5px; border-radius: 3px;
+          background: rgba(255, 255, 255, 0.05);
+          letter-spacing: 0.5px;
+        }
         #roster-overlay .hint { margin-top: 4px; font-size: 11px; color: #8a96a4; min-height: 14px; }
         #roster-overlay .card.active .hint { color: #ffb949; }
         #roster-overlay .controls {
@@ -347,6 +478,36 @@ class RosterUI {
           color: #e8edf2; background: rgba(255,255,255,0.04);
           font-family: inherit; font-size: 11px;
         }
+        #roster-overlay .card { cursor: pointer; touch-action: manipulation;
+          -webkit-tap-highlight-color: transparent; user-select: none; }
+        #roster-overlay .actions {
+          margin-top: 14px; display: flex; gap: 8px; flex-wrap: wrap;
+          justify-content: center;
+        }
+        #roster-overlay .actions button {
+          padding: 8px 14px;
+          background: rgba(14, 18, 26, 0.85);
+          border: 1px solid #3a4756; border-radius: 6px;
+          color: #e8edf2; font-family: inherit; font-size: 12px;
+          letter-spacing: 1px; cursor: pointer;
+          touch-action: manipulation;
+          -webkit-tap-highlight-color: transparent;
+        }
+        #roster-overlay .actions button .key {
+          color: #ffd884; font-weight: 700; margin-right: 6px;
+        }
+        #roster-overlay .actions button:active {
+          background: rgba(255, 185, 73, 0.15);
+          border-color: #ffb949;
+        }
+        #roster-overlay .actions button.release {
+          background: rgba(232, 90, 90, 0.10);
+          border-color: #e85a5a; color: #ffd0d0;
+        }
+        #roster-overlay .actions button.release .key { color: #ffb0b0; }
+        #roster-overlay .actions button.release:active {
+          background: rgba(232, 90, 90, 0.25);
+        }
       </style>
       <div class="title">ROSTER &amp; BAND</div>
       <div class="subtitle">Captured rivals · max 1 per role on team</div>
@@ -357,7 +518,15 @@ class RosterUI {
         <kbd>↑</kbd>/<kbd>↓</kbd> select &nbsp;·&nbsp;
         <kbd>T</kbd> toggle team &nbsp;·&nbsp;
         <kbd>[</kbd>/<kbd>]</kbd> reorder &nbsp;·&nbsp;
+        <kbd>X</kbd> let go &nbsp;·&nbsp;
         <kbd>R</kbd>/<kbd>Esc</kbd> close
+      </div>
+      <div class="actions">
+        <button data-key="KeyT"><span class="key">T</span>Toggle Team</button>
+        <button data-key="BracketLeft"><span class="key">[</span>Earlier</button>
+        <button data-key="BracketRight"><span class="key">]</span>Later</button>
+        <button class="release" data-key="KeyX"><span class="key">X</span>Let Go</button>
+        <button data-key="Escape"><span class="key">Esc</span>Close</button>
       </div>
     `;
     return root;

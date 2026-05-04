@@ -1,0 +1,91 @@
+{
+  "character": {
+    "id": "74fc7364-5eb8-4521-b21b-a83c3832369c",
+    "name": "long haired formal suit",
+    "prompt": "long haired formal suit",
+    "size": {
+      "width": 120,
+      "height": 120
+    },
+    "template_id": "mannequin",
+    "directions": 8,
+    "view": "low top-down",
+    "created_at": "2026-05-01T15:02:14.285716+00:00"
+  },
+  "frames": {
+    "rotations": {
+      "south": "rotations/south.png",
+      "south-east": "rotations/south-east.png",
+      "east": "rotations/east.png",
+      "north-east": "rotations/north-east.png",
+      "north": "rotations/north.png",
+      "north-west": "rotations/north-west.png",
+      "west": "rotations/west.png",
+      "south-west": "rotations/south-west.png"
+    },
+    "animations": {
+      "Walking-7d3c6e59": {
+        "south": [
+          "animations/Walking-7d3c6e59/south/frame_000.png",
+          "animations/Walking-7d3c6e59/south/frame_001.png",
+          "animations/Walking-7d3c6e59/south/frame_002.png",
+          "animations/Walking-7d3c6e59/south/frame_003.png",
+          "animations/Walking-7d3c6e59/south/frame_004.png",
+          "animations/Walking-7d3c6e59/south/frame_005.png"
+        ],
+        "north": [
+          "animations/Walking-7d3c6e59/north/frame_000.png",
+          "animations/Walking-7d3c6e59/north/frame_001.png",
+          "animations/Walking-7d3c6e59/north/frame_002.png",
+          "animations/Walking-7d3c6e59/north/frame_003.png",
+          "animations/Walking-7d3c6e59/north/frame_004.png",
+          "animations/Walking-7d3c6e59/north/frame_005.png"
+        ],
+        "east": [
+          "animations/Walking-7d3c6e59/east/frame_000.png",
+          "animations/Walking-7d3c6e59/east/frame_001.png",
+          "animations/Walking-7d3c6e59/east/frame_002.png",
+          "animations/Walking-7d3c6e59/east/frame_003.png",
+          "animations/Walking-7d3c6e59/east/frame_004.png",
+          "animations/Walking-7d3c6e59/east/frame_005.png"
+        ],
+        "west": [
+          "animations/Walking-7d3c6e59/west/frame_000.png",
+          "animations/Walking-7d3c6e59/west/frame_001.png",
+          "animations/Walking-7d3c6e59/west/frame_002.png",
+          "animations/Walking-7d3c6e59/west/frame_003.png",
+          "animations/Walking-7d3c6e59/west/frame_004.png",
+          "animations/Walking-7d3c6e59/west/frame_005.png"
+        ]
+      },
+      "Breathing_Idle-65551a40": {
+        "south": [
+          "animations/Breathing_Idle-65551a40/south/frame_000.png",
+          "animations/Breathing_Idle-65551a40/south/frame_001.png",
+          "animations/Breathing_Idle-65551a40/south/frame_002.png",
+          "animations/Breathing_Idle-65551a40/south/frame_003.png"
+        ],
+        "east": [
+          "animations/Breathing_Idle-65551a40/east/frame_000.png",
+          "animations/Breathing_Idle-65551a40/east/frame_001.png",
+          "animations/Breathing_Idle-65551a40/east/frame_002.png",
+          "animations/Breathing_Idle-65551a40/east/frame_003.png"
+        ],
+        "west": [
+          "animations/Breathing_Idle-65551a40/west/frame_000.png",
+          "animations/Breathing_Idle-65551a40/west/frame_001.png",
+          "animations/Breathing_Idle-65551a40/west/frame_002.png",
+          "animations/Breathing_Idle-65551a40/west/frame_003.png"
+        ],
+        "north": [
+          "animations/Breathing_Idle-65551a40/north/frame_000.png",
+          "animations/Breathing_Idle-65551a40/north/frame_001.png",
+          "animations/Breathing_Idle-65551a40/north/frame_002.png",
+          "animations/Breathing_Idle-65551a40/north/frame_003.png"
+        ]
+      }
+    }
+  },
+  "export_version": "2.0",
+  "export_date": "2026-05-04T02:11:10.803648"
+}

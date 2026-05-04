@@ -13,6 +13,14 @@ import { inputManager } from '../engine/inputManager.js';
  * On step completion, emits `player.stepped` with the destination
  * tile so the encounter system can roll.
  *
+ * Visual: rendered as a `THREE.Sprite` (always camera-facing, no
+ * shear) with directional sprite art under
+ * `/assets/sprites/characters/manager/animations/{breathing|walking}/
+ * {north|south|east|west}/frame_NNN.png`. Walking plays the
+ * `walking` loop in the current facing direction; standing still
+ * plays the slower `breathing` loop. The colored cube placeholder
+ * shows for the brief window before the first frame loads.
+ *
  * Held-key behavior:
  *   The design doc §12.1 specifies a 200 ms hold-to-walk delay before
  *   auto-repeat. That delay is meant to disambiguate a tap from a
@@ -30,6 +38,17 @@ import { inputManager } from '../engine/inputManager.js';
 
 const STEP_DURATION_S = 0.18; // ~5.5 tiles/sec — snappier than the doc's 4 tiles/sec, still readable
 
+/** Sprite display size in world units (square; PNGs are 120×120). */
+const SPRITE_SIZE = 1.2;
+/** Y offset that puts the sprite's bottom edge on the tile floor. */
+const SPRITE_GROUND_OFFSET = SPRITE_SIZE / 2;
+
+/** Per-state framerate for sprite frames. */
+const ANIM_FPS = { breathing: 4, walking: 10 };
+/** Number of frames per state — folder layout is fixed by the
+ *  exporter so we hardcode counts and avoid runtime probing. */
+const FRAME_COUNTS = { breathing: 4, walking: 6 };
+
 const KEY_TO_DIR = /** @type {Record<string, [number, number]>} */ ({
   KeyW: [0, -1],
   ArrowUp: [0, -1],
@@ -40,6 +59,59 @@ const KEY_TO_DIR = /** @type {Record<string, [number, number]>} */ ({
   KeyD: [1, 0],
   ArrowRight: [1, 0],
 });
+
+/**
+ * Map a step delta to a compass facing. Top-down camera: -Y screen
+ * direction is "north". WASD ↔ N/W/S/E from the player's read.
+ *
+ * @param {number} dx @param {number} dy
+ * @returns {'north'|'south'|'east'|'west' | null}
+ */
+function dirToFacing(dx, dy) {
+  if (dy < 0) return 'north';
+  if (dy > 0) return 'south';
+  if (dx < 0) return 'west';
+  if (dx > 0) return 'east';
+  return null;
+}
+
+/** Shared TextureLoader — same instance across players in a session. */
+const textureLoader = new THREE.TextureLoader();
+
+/**
+ * Load every frame of the manager sprite set up front. ~40 PNGs;
+ * runs once per session because the result is cached at module scope.
+ *
+ * @returns {Record<'breathing'|'walking', Record<'north'|'south'|'east'|'west', THREE.Texture[]>>}
+ */
+let cachedManagerFrames = /** @type {any} */ (null);
+function loadManagerFrames() {
+  if (cachedManagerFrames) return cachedManagerFrames;
+  /** @type {any} */
+  const out = {};
+  const states = /** @type {('breathing'|'walking')[]} */ (Object.keys(FRAME_COUNTS));
+  const dirs = /** @type {('north'|'south'|'east'|'west')[]} */ (
+    ['north', 'south', 'east', 'west']
+  );
+  for (const state of states) {
+    out[state] = {};
+    for (const dir of dirs) {
+      /** @type {THREE.Texture[]} */
+      const frames = [];
+      for (let i = 0; i < FRAME_COUNTS[state]; i++) {
+        const n = String(i).padStart(3, '0');
+        const url = `/assets/sprites/characters/manager/animations/${state}/${dir}/frame_${n}.png`;
+        const tex = textureLoader.load(url);
+        tex.magFilter = THREE.NearestFilter;
+        tex.minFilter = THREE.NearestFilter;
+        frames.push(tex);
+      }
+      out[state][dir] = frames;
+    }
+  }
+  cachedManagerFrames = out;
+  return out;
+}
 
 export class PlayerOverworld {
   /** @param {PlayerOverworldInit} init */
@@ -53,15 +125,42 @@ export class PlayerOverworld {
     /** 0 → still, 1 → arrived. Drives the lerp. */
     this.stepProgress = 1;
 
-    this.mesh = new THREE.Mesh(
-      new THREE.BoxGeometry(0.5, 1.0, 0.5),
-      new THREE.MeshStandardMaterial({ color: 0x6ec1ff })
-    );
+    /** Current facing — survives between steps so an idle manager
+     *  keeps looking the way they last walked. */
+    this.facing = /** @type {'north'|'south'|'east'|'west'} */ ('south');
+    /** Active animation set name. */
+    this.animState = /** @type {'breathing'|'walking'} */ ('breathing');
+    /** Frame index within the active set. */
+    this.animFrame = 0;
+    /** Time accumulator for advancing frames. */
+    this.animTime = 0;
+
+    // Sprite mesh — always camera-facing, no shear under the
+    // top-down camera the explore scene uses.
+    const material = new THREE.SpriteMaterial({
+      color: 0xffffff,
+      transparent: true,
+    });
+    this.mesh = new THREE.Sprite(material);
+    this.mesh.scale.set(SPRITE_SIZE, SPRITE_SIZE, 1);
+
+    this.#frames = loadManagerFrames();
+    // Prime the material map immediately so the first frame shows
+    // before the texture image actually decodes.
+    const first = this.#frames[this.animState][this.facing][0];
+    if (first) {
+      material.map = first;
+      material.needsUpdate = true;
+    }
+
     this.#snapMeshToTile();
 
     /** Subtle idle bob, scaled down so the silhouette stays grounded. */
     this.idleTime = Math.random() * Math.PI * 2;
   }
+
+  /** @type {ReturnType<typeof loadManagerFrames>} */
+  #frames;
 
   /**
    * Try to step in a direction (dx, dy). Rejects diagonal moves and
@@ -73,6 +172,10 @@ export class PlayerOverworld {
   tryStep(dx, dy) {
     if (this.stepProgress < 1) return false;
     if ((dx === 0) === (dy === 0)) return false; // both zero or both non-zero
+    // Update facing on every attempt — bumping into a wall should
+    // still turn the manager so the sprite reads the right way.
+    const facing = dirToFacing(dx, dy);
+    if (facing) this.facing = facing;
     const tx = this.tileX + dx;
     const ty = this.tileY + dy;
     if (!this.island.isWalkable(tx, ty)) {
@@ -115,15 +218,50 @@ export class PlayerOverworld {
           this.#updateMeshPosition();
         }
       }
-      return;
+    } else {
+      // Idle — any held or just-pressed key starts a step right away.
+      const dir = this.#readDirection();
+      if (dir) {
+        this.tryStep(dir[0], dir[1]);
+      }
+      this.#updateMeshPosition();
     }
 
-    // Idle — any held or just-pressed key starts a step right away.
-    const dir = this.#readDirection();
-    if (dir) {
-      this.tryStep(dir[0], dir[1]);
+    this.#advanceAnimation(dt);
+  }
+
+  /**
+   * Pick the right animation set for the player's state and step the
+   * frame. Walking while moving, breathing when still. Switching sets
+   * resets the frame so the new loop starts at frame 0 instead of
+   * jumping mid-stride.
+   *
+   * @param {number} dt
+   */
+  #advanceAnimation(dt) {
+    const nextState = this.stepProgress < 1 ? 'walking' : 'breathing';
+    if (nextState !== this.animState) {
+      this.animState = nextState;
+      this.animFrame = 0;
+      this.animTime = 0;
     }
-    this.#updateMeshPosition();
+    const frames = this.#frames[this.animState]?.[this.facing];
+    if (!frames || frames.length === 0) return;
+    const fps = ANIM_FPS[this.animState];
+    const frameDur = 1 / fps;
+    this.animTime += dt;
+    while (this.animTime >= frameDur) {
+      this.animTime -= frameDur;
+      this.animFrame = (this.animFrame + 1) % frames.length;
+    }
+    const tex = frames[this.animFrame];
+    const material = /** @type {THREE.SpriteMaterial} */ (
+      /** @type {any} */ (this.mesh).material
+    );
+    if (tex && material.map !== tex) {
+      material.map = tex;
+      material.needsUpdate = true;
+    }
   }
 
   /**
@@ -144,18 +282,17 @@ export class PlayerOverworld {
   }
 
   #snapMeshToTile() {
-    const w = this.island.tileToWorld(this.tileX, this.tileY, 0.5);
+    const w = this.island.tileToWorld(this.tileX, this.tileY, SPRITE_GROUND_OFFSET);
     this.mesh.position.set(w.x, w.y, w.z);
   }
 
   #updateMeshPosition() {
-    const a = this.island.tileToWorld(this.prevTileX, this.prevTileY, 0.5);
-    const b = this.island.tileToWorld(this.tileX, this.tileY, 0.5);
+    const a = this.island.tileToWorld(this.prevTileX, this.prevTileY, SPRITE_GROUND_OFFSET);
+    const b = this.island.tileToWorld(this.tileX, this.tileY, SPRITE_GROUND_OFFSET);
     const t = this.stepProgress;
-    const bob = Math.sin(this.idleTime * 8) * 0.04 * (t < 1 ? 1 : 0.4);
     this.mesh.position.set(
       a.x + (b.x - a.x) * t,
-      a.y + bob,
+      a.y,
       a.z + (b.z - a.z) * t
     );
   }

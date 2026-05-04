@@ -1,0 +1,78 @@
+{
+  "character": {
+    "id": "b378b750-4135-4354-9750-e05c3af77c9a",
+    "name": "red headed bearded man play piano",
+    "prompt": "red headed bearded man play piano",
+    "size": {
+      "width": 124,
+      "height": 124
+    },
+    "template_id": "mannequin",
+    "directions": 8,
+    "view": "low top-down",
+    "created_at": "2026-04-30T03:53:03.783781+00:00"
+  },
+  "frames": {
+    "rotations": {
+      "south": "rotations/south.png",
+      "south-east": "rotations/south-east.png",
+      "east": "rotations/east.png",
+      "north-east": "rotations/north-east.png",
+      "north": "rotations/north.png",
+      "north-west": "rotations/north-west.png",
+      "west": "rotations/west.png",
+      "south-west": "rotations/south-west.png"
+    },
+    "animations": {
+      "hands_raised_and_then_presses_keys_to_do_chords_on-51c7b5fc": {
+        "north-east": [
+          "animations/hands_raised_and_then_presses_keys_to_do_chords_on-51c7b5fc/north-east/frame_000.png",
+          "animations/hands_raised_and_then_presses_keys_to_do_chords_on-51c7b5fc/north-east/frame_001.png",
+          "animations/hands_raised_and_then_presses_keys_to_do_chords_on-51c7b5fc/north-east/frame_002.png",
+          "animations/hands_raised_and_then_presses_keys_to_do_chords_on-51c7b5fc/north-east/frame_003.png",
+          "animations/hands_raised_and_then_presses_keys_to_do_chords_on-51c7b5fc/north-east/frame_004.png",
+          "animations/hands_raised_and_then_presses_keys_to_do_chords_on-51c7b5fc/north-east/frame_005.png",
+          "animations/hands_raised_and_then_presses_keys_to_do_chords_on-51c7b5fc/north-east/frame_006.png",
+          "animations/hands_raised_and_then_presses_keys_to_do_chords_on-51c7b5fc/north-east/frame_007.png",
+          "animations/hands_raised_and_then_presses_keys_to_do_chords_on-51c7b5fc/north-east/frame_008.png"
+        ]
+      },
+      "both_hands_raised-bd36cc86": {
+        "north-east": [
+          "animations/both_hands_raised-bd36cc86/north-east/frame_000.png",
+          "animations/both_hands_raised-bd36cc86/north-east/frame_001.png",
+          "animations/both_hands_raised-bd36cc86/north-east/frame_002.png",
+          "animations/both_hands_raised-bd36cc86/north-east/frame_003.png",
+          "animations/both_hands_raised-bd36cc86/north-east/frame_004.png"
+        ]
+      },
+      "performing_passionately_with_electric_aura-3a66d0e1": {
+        "north-east": [
+          "animations/performing_passionately_with_electric_aura-3a66d0e1/north-east/frame_000.png",
+          "animations/performing_passionately_with_electric_aura-3a66d0e1/north-east/frame_001.png",
+          "animations/performing_passionately_with_electric_aura-3a66d0e1/north-east/frame_002.png",
+          "animations/performing_passionately_with_electric_aura-3a66d0e1/north-east/frame_003.png",
+          "animations/performing_passionately_with_electric_aura-3a66d0e1/north-east/frame_004.png",
+          "animations/performing_passionately_with_electric_aura-3a66d0e1/north-east/frame_005.png",
+          "animations/performing_passionately_with_electric_aura-3a66d0e1/north-east/frame_006.png",
+          "animations/performing_passionately_with_electric_aura-3a66d0e1/north-east/frame_007.png",
+          "animations/performing_passionately_with_electric_aura-3a66d0e1/north-east/frame_008.png"
+        ]
+      },
+      "Fight_Stance_Idle-5a1c265c": {
+        "north-east": [
+          "animations/Fight_Stance_Idle-5a1c265c/north-east/frame_000.png",
+          "animations/Fight_Stance_Idle-5a1c265c/north-east/frame_001.png",
+          "animations/Fight_Stance_Idle-5a1c265c/north-east/frame_002.png",
+          "animations/Fight_Stance_Idle-5a1c265c/north-east/frame_003.png",
+          "animations/Fight_Stance_Idle-5a1c265c/north-east/frame_004.png",
+          "animations/Fight_Stance_Idle-5a1c265c/north-east/frame_005.png",
+          "animations/Fight_Stance_Idle-5a1c265c/north-east/frame_006.png",
+          "animations/Fight_Stance_Idle-5a1c265c/north-east/frame_007.png"
+        ]
+      }
+    }
+  },
+  "export_version": "2.0",
+  "export_date": "2026-05-01T12:13:57.767742"
+}

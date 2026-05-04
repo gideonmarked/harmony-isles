@@ -5,16 +5,22 @@ import * as THREE from 'three';
 import { eventBus } from '../engine/eventBus.js';
 import { sceneManager } from '../engine/sceneManager.js';
 import { getConfig } from '../engine/configService.js';
-import { getState, dispatch, expToNextRank } from '../engine/gameState.js';
+import { getState, dispatch, expToNextRank, ROSTER_MAX } from '../engine/gameState.js';
 import { saveSystem } from '../engine/saveSystem.js';
 import { startRhythm, LANE_KEYS } from '../engine/rhythmEngine.js';
 import { freezeFor, shakeCamera, resetTimeFx } from '../engine/timeFx.js';
-import { Character } from '../entities/character.js';
+import { Character, SPRITE_GROUND_OFFSET } from '../entities/character.js';
 import { battleHud } from '../ui/battleHud.js';
 import { battleFx } from '../ui/battleFx.js';
 import { rhythmUI } from '../ui/rhythmUI.js';
 import { itemMenu } from '../ui/itemMenu.js';
 import { songMenu } from '../ui/songMenu.js';
+import {
+  ROLE_BASE_STATS,
+  ROLE_STAT_GROWTH,
+  rarityMultiplierFor,
+  scaleStats as scaleStatsForRival,
+} from '../util/characterStats.js';
 
 /**
  * Battle scene — the Jam Clash arena.
@@ -85,6 +91,12 @@ export const battleScene = (() => {
   const RESOLVE_DELAY_MS = 600;
   const BAND_PERFORMANCE_RESOLVE_DELAY_MS = 1200;
   const ENEMY_TURN_DELAY_MS = 800;
+  /**
+   * How long the rival's Perform animation loops after the hit
+   * resolves. Long enough to read the full ~9-frame loop a couple of
+   * times before the next round starts.
+   */
+  const ENEMY_PERFORM_DURATION_MS = 1100;
 
   /** @type {THREE.Group | null} */
   let group = null;
@@ -186,7 +198,7 @@ export const battleScene = (() => {
     const rarityCred = { common: 1, rare: 2, epic: 4, legendary: 8 };
     const rarityMult = { common: 1.0, rare: 1.2, epic: 1.5, legendary: 2.0 };
     const r = /** @type {keyof typeof rarityNotes} */ (def.rarity ?? 'common');
-    const notes = 50 + 20 * rank + (rarityNotes[r] ?? 0);
+    const notes = 5000 + 20 * rank + (rarityNotes[r] ?? 0);
     const cred = rarityCred[r] ?? 1;
     const exp = Math.round((10 + 6 * rank) * (rarityMult[r] ?? 1) * 0.5);
     dispatch({ type: 'GRANT_NOTES', amount: notes });
@@ -287,14 +299,15 @@ export const battleScene = (() => {
 
   /**
    * Whether the player has the option to recruit the just-defeated
-   * rival. False if no template, or the template is already in the
-   * roster (avoids duplicate prompts).
+   * rival. Gated by roster size only — duplicates are allowed (each
+   * one mints a fresh `templateId-N` slot in the reducer), so the
+   * only reason to suppress the prompt is "your roster is full".
    *
    * @param {{ templateId?: string }} def
    */
   function canOfferRecruit(def) {
     if (!def?.templateId) return false;
-    return !getState().capturedRivals.includes(def.templateId);
+    return Object.keys(getState().roster).length < ROSTER_MAX;
   }
 
   /**
@@ -353,7 +366,7 @@ export const battleScene = (() => {
       setPrompt(`${lineText}${rewardText}${levelUpText}${dropText}${tail}`);
       shakeCamera(0.65, 480);
       freezeFor(220);
-      eventBus.emit('battle.gameOver', { outcome: 'victory' });
+      eventBus.emit('battle.gameOver', { outcome: 'victory', canRecruit });
       return true;
     }
     if (isTeamWiped()) {
@@ -372,7 +385,11 @@ export const battleScene = (() => {
       setPrompt(`${lineText}${tail}`);
       shakeCamera(0.55, 420);
       freezeFor(220);
-      eventBus.emit('battle.gameOver', { outcome: 'defeat' });
+      eventBus.emit('battle.gameOver', {
+        outcome: 'defeat',
+        canRecruit: false,
+        canRetry: hasSave,
+      });
       return true;
     }
     return false;
@@ -513,7 +530,8 @@ export const battleScene = (() => {
     player.mp = Math.min(player.mpMax, player.mp + regen);
     const gained = player.mp - before;
 
-    player.playAttack();
+    player.startActionLoop('strum');
+    player.playAttack('strum');
     enemy.takeDamage(damage);
     emitHp('enemy');
     eventBus.emit('battle.damageDealt', {
@@ -532,6 +550,7 @@ export const battleScene = (() => {
     );
 
     delay(() => {
+      player?.stopActionLoop();
       nextActor();
     }, STRUM_DELAY_MS);
   }
@@ -558,7 +577,21 @@ export const battleScene = (() => {
   /** @type {any} */
   let currentRivalDef = null;
 
-  function pickRivalDef() {
+  /**
+   * Pick a rival template that matches the encounter's rolled rarity
+   * tier. Falls back through tiers if no exact match exists in
+   * rivals.json (currently no epic / legendary templates are
+   * authored, so an "epic" roll lands on a rare template scaled up
+   * by the rarity multiplier).
+   *
+   * Without this filter, ~50% of "rare" encounters silently spawned
+   * a common-rarity template (riffLord, beatSmith, etc.) — the
+   * recruit prompt then skipped them as "already captured", which is
+   * why rare recruits felt unattainable.
+   *
+   * @param {string} [wantRarity]
+   */
+  function pickRivalDef(wantRarity) {
     let roster;
     try {
       roster = /** @type {Record<string, any>} */ (getConfig('rivals'));
@@ -578,56 +611,19 @@ export const battleScene = (() => {
         defeatLine: 'Better luck on your next gig.',
       };
     }
-    const ids = Object.keys(roster);
-    const id = ids[Math.floor(Math.random() * ids.length)];
-    return roster[id];
-  }
-
-  /** §7.2 rarity multipliers. */
-  function rarityMultiplierFor(/** @type {string} */ rarity) {
-    switch (rarity) {
-      case 'rare':
-        return 1.2;
-      case 'epic':
-        return 1.5;
-      case 'legendary':
-        return 2.0;
-      case 'common':
-      default:
-        return 1.0;
+    const all = Object.values(roster);
+    // Tier-aware fallback: try the exact rarity, then walk down to
+    // common, then fall through to "any" if even common is empty.
+    const order = ['legendary', 'epic', 'rare', 'common'];
+    const start = wantRarity ? order.indexOf(wantRarity) : -1;
+    const chain = start >= 0 ? order.slice(start) : ['__any__'];
+    for (const tier of chain) {
+      const pool =
+        tier === '__any__' ? all : all.filter((r) => r.rarity === tier);
+      if (pool.length > 0) return pool[Math.floor(Math.random() * pool.length)];
     }
+    return all[Math.floor(Math.random() * all.length)];
   }
-
-  /**
-   * §9.3 role-specific stat growth per rank. Rivals start from
-   * rivals.json baseline (rank 1) and grow by these per rank. Used
-   * when the encounter rolls a rank > 1 — common islands stay near
-   * 1, rare islands push into double digits.
-   *
-   * @type {Record<string, Record<string, number>>}
-   */
-  const ROLE_STAT_GROWTH = {
-    guitarist:   { technicality: 1.4, focus: 1.0, groove: 1.8, confidence: 1.6, creativity: 1.3, energy: 1.2 },
-    bassist:     { technicality: 1.1, focus: 1.0, groove: 1.6, confidence: 2.2, creativity: 1.0, energy: 1.2 },
-    drummer:     { technicality: 1.2, focus: 1.5, groove: 1.6, confidence: 1.8, creativity: 0.9, energy: 1.7 },
-    keyboardist: { technicality: 1.6, focus: 1.0, groove: 0.9, confidence: 1.5, creativity: 1.9, energy: 1.6 },
-    singer:      { technicality: 1.0, focus: 1.1, groove: 1.0, confidence: 2.0, creativity: 1.7, energy: 1.4 },
-  };
-
-  /**
-   * §9.2 rank-1 baselines for the player's roles. Mirrors the rivals
-   * baseline numbers in rivals.json — same growth table, same source
-   * truth.
-   *
-   * @type {Record<string, Record<string, number>>}
-   */
-  const ROLE_BASE_STATS = {
-    guitarist:   { technicality: 12, focus: 10, groove: 14, confidence: 9,  creativity: 11, energy: 10 },
-    bassist:     { technicality: 10, focus: 9,  groove: 13, confidence: 13, creativity: 9,  energy: 10 },
-    drummer:     { technicality: 11, focus: 12, groove: 13, confidence: 11, creativity: 8,  energy: 13 },
-    keyboardist: { technicality: 13, focus: 9,  groove: 8,  confidence: 9,  creativity: 14, energy: 12 },
-    singer:      { technicality: 9,  focus: 10, groove: 9,  confidence: 12, creativity: 13, energy: 11 },
-  };
 
   const ROLE_COLORS = {
     guitarist:   0x6ec1ff,
@@ -662,6 +658,11 @@ export const battleScene = (() => {
     );
     return new Character({
       id,
+      // The roster's `templateId` is the rival template the member
+      // was captured from (e.g. 'riffLord'); the bare roster id maps
+      // directly to a sprite folder. Falls through to the in-Character
+      // default-character fallback if no folder exists yet.
+      assetKey: m.templateId ?? m.id,
       name: m.name,
       isPlayer: true,
       stats,
@@ -682,6 +683,8 @@ export const battleScene = (() => {
     activeTeamIdx = idx;
     player = team[idx] ?? null;
     if (!player) return;
+    // Flip the queue's `ready` animation to the new active member.
+    for (const c of team) c.setActive(c === player);
     const m = teamRosterFor(player.id);
     eventBus.emit('battle.activeChanged', {
       id: player.id,
@@ -767,27 +770,6 @@ export const battleScene = (() => {
     startPlayerTurn();
   }
 
-  /**
-   * Scale a rival's rank-1 stats out to the encounter-rolled rank
-   * and apply the rarity multiplier on top, per §9.1's compound
-   * formula:
-   *   stat = round((base + growth × (rank − 1)) × rarityMult)
-   *
-   * @param {Record<string, number>} stats
-   * @param {string} role
-   * @param {number} rank
-   * @param {number} rarityMult
-   */
-  function scaleStatsForRival(stats, role, rank, rarityMult) {
-    const growth = ROLE_STAT_GROWTH[role] ?? ROLE_STAT_GROWTH.guitarist;
-    /** @type {Record<string, number>} */
-    const out = {};
-    for (const [key, base] of Object.entries(stats)) {
-      const g = growth[key] ?? 1.0;
-      out[key] = Math.round((base + g * (rank - 1)) * rarityMult);
-    }
-    return /** @type {any} */ (out);
-  }
 
   function openSongMenu() {
     if (!player) return;
@@ -872,6 +854,16 @@ export const battleScene = (() => {
       bandPerformance: bandPerformance,
     });
     rhythmUI.flashReady(RHYTHM_LEAD_IN_MS);
+
+    // Pin sprites to the perform loop for the duration of the song.
+    // Band Performance recruits every alive team member so the whole
+    // band animates together; a regular Perform is just the active
+    // member. resolvePerform() clears the loops when the song ends.
+    if (bandPerformance) {
+      for (const c of team) if (!c.isKO) c.startActionLoop('perform');
+    } else {
+      player.startActionLoop('perform');
+    }
   }
 
   /** @param {boolean} bandPerformance */
@@ -904,13 +896,20 @@ export const battleScene = (() => {
     // scaleStat — pick the stat named in song.scalesOff per §15. "mixed"
     // averages Groove and Creativity (Final Encore). Visionary's
     // creativityStatMult and item buffs stack per §21.4.
+    //
+    // Band Performance is a group hit: every alive team member
+    // contributes their stat, summed into the same formula. Four
+    // members on the floor → roughly 4× the damage of a solo Perform
+    // before the bandPerformanceDamageMult bonus kicks in.
     const scalesOff = currentSong?.scalesOff ?? 'creativity';
-    const baseStat = (() => {
-      if (scalesOff === 'mixed') {
-        return (player.stats.groove + player.stats.creativity) / 2;
-      }
-      return player.stats[scalesOff] ?? player.stats.creativity;
-    })();
+    /** @param {Character} c */
+    const memberStat = (c) => {
+      if (scalesOff === 'mixed') return (c.stats.groove + c.stats.creativity) / 2;
+      return c.stats[scalesOff] ?? c.stats.creativity;
+    };
+    const baseStat = bp
+      ? team.filter((c) => !c.isKO).reduce((sum, c) => sum + memberStat(c), 0)
+      : memberStat(player);
     const styleStatMult = scalesOff === 'creativity' ? (fx.creativityStatMult ?? 1) : 1;
     const buffMult = player.statBuffs[scalesOff] ?? 1;
     const scaleStat = baseStat * styleStatMult * buffMult;
@@ -942,7 +941,16 @@ export const battleScene = (() => {
       defense;
     const damage = Math.max(1, Math.round(rawDamage));
 
-    player.playAttack();
+    if (bp) {
+      for (const c of team) {
+        if (c.isKO) continue;
+        c.stopActionLoop();
+        c.playAttack('perform');
+      }
+    } else {
+      player.stopActionLoop();
+      player.playAttack('perform');
+    }
     if (isHeal) {
       const { before, after } = player.heal(damage);
       emitHp('player');
@@ -1026,15 +1034,19 @@ export const battleScene = (() => {
         (ENEMY_PERFORM_POWER * enemy.stats.groove * 1.2 * damageJitter()) /
         confidenceDefense(target);
       const dmg = Math.max(1, Math.round(rawDmg));
-      enemy.playAttack();
+      enemy.startActionLoop('perform');
+      enemy.playAttack('perform');
       target.takeDamage(dmg);
       emitMemberHp(target);
       eventBus.emit('battle.damageDealt', { from: enemy.id, to: target.id, amount: dmg });
       // Defend consumes its protection on the hit it absorbed.
       target.isDefending = false;
 
-      if (checkVictory()) return;
-      startRound();
+      delay(() => {
+        enemy?.stopActionLoop();
+        if (checkVictory()) return;
+        startRound();
+      }, ENEMY_PERFORM_DURATION_MS);
     }, ENEMY_TURN_DELAY_MS);
   }
 
@@ -1064,12 +1076,14 @@ export const battleScene = (() => {
         };
         team.push(createTeamCharacter(member, `t${i}:${rid}`));
       });
-      // Fan the team across the X-axis line so each silhouette
-      // reads from the iso angle without overlap.
+      // Fan the team across the depth axis so each silhouette reads
+      // from the iso angle without overlap. Anchor pulled in from the
+      // platform's edge so the leftmost member doesn't crowd the
+      // corner.
       const n = team.length;
       team.forEach((c, i) => {
-        const z = (i - (n - 1) / 2) * 0.9;
-        c.setBasePosition(-2.5, 0.8, z);
+        const z = (i - (n - 1) / 2) * 1.0;
+        c.setBasePosition(-2.4, SPRITE_GROUND_OFFSET, z);
         group.add(c.mesh);
       });
       setActive(0);
@@ -1079,8 +1093,10 @@ export const battleScene = (() => {
       // encounter the explore scene rolled. Higher-tier islands have
       // higher rankRange in encounters.json, so a rival caught at
       // Open Arena hits noticeably harder than one at Garage Stage.
-      const rivalDef = pickRivalDef();
       const pending = getState().world?.pendingEncounter ?? null;
+      // Filter rival templates by the encounter's rolled rarity so
+      // recruit dedup works correctly — see pickRivalDef header.
+      const rivalDef = pickRivalDef(pending?.rarity);
       const finalRarity = pending?.rarity ?? rivalDef.rarity ?? 'common';
       const finalRank = pending?.rank ?? rivalDef.rank ?? 1;
       // templateId is the rivals.json key; recruitment uses it to
@@ -1109,6 +1125,10 @@ export const battleScene = (() => {
       );
       enemy = new Character({
         id: 'e1',
+        // Battle id is `'e1'` for state-tracking, but the sprite key
+        // is the rival template id ('riffLord' / 'beatSmith' / ...) so
+        // the matching folder is picked up.
+        assetKey: rivalDef.id,
         name: rivalDef.name,
         isPlayer: false,
         stats: scaledStats,
@@ -1116,7 +1136,7 @@ export const battleScene = (() => {
         mpMax,
         color: parseInt(rivalDef.color, 16),
       });
-      enemy.setBasePosition(2, 0.8, 0);
+      enemy.setBasePosition(3.0, SPRITE_GROUND_OFFSET, 0);
       group.add(enemy.mesh);
 
       ctx.scene.add(group);
@@ -1226,21 +1246,22 @@ export const battleScene = (() => {
                 rhythm = null;
                 rhythmUI.hide();
               }
-              // Defeat lands the player back at the title — they may
-              // want to switch slots or start over. After a victory or
-              // mid-battle bail-out the world map is the right hub
-              // (shop, roster, next island).
+              // Defeat → title (player may want to switch slots /
+              // start over). Victory or mid-battle bail-out drops
+              // back into the explore scene of whichever island the
+              // fight kicked off on, so the player picks up walking
+              // exactly where they left.
               const dest =
                 phase === 'gameOver' && gameOverOutcome === 'defeat'
                   ? 'title'
-                  : 'worldMap';
+                  : 'explore';
               sceneManager.transition(dest);
               return;
             }
-            // Defeat retry — reload the last save (which is the
-            // pre-battle checkpoint, since the gameOver auto-save is
-            // skipped on defeat) and drop into the world map. Player
-            // walks back into the encounter on a clean slate.
+            // Defeat retry — reload the last save (the pre-battle
+            // checkpoint, since the gameOver auto-save is skipped on
+            // defeat) and drop into explore so the player walks back
+            // into the encounter on a clean slate.
             if (
               phase === 'gameOver' &&
               gameOverOutcome === 'defeat' &&
@@ -1258,7 +1279,7 @@ export const battleScene = (() => {
                 rhythm = null;
                 rhythmUI.hide();
               }
-              sceneManager.transition('worldMap');
+              sceneManager.transition('explore');
               return;
             }
             // Victory recruit prompt: Y captures, N is an explicit

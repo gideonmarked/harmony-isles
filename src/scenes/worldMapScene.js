@@ -7,8 +7,9 @@ import { sceneManager } from '../engine/sceneManager.js';
 import { getConfig } from '../engine/configService.js';
 import { dispatch, getState, expToNextCred } from '../engine/gameState.js';
 import { setCameraIso } from '../engine/renderer.js';
-import { shopUI } from '../ui/shopUI.js';
 import { rosterUI } from '../ui/rosterUI.js';
+import { itemMenu } from '../ui/itemMenu.js';
+import { bindAsClick, bindAsKey } from '../util/pointer.js';
 
 /**
  * World Map scene — the player's "tour itinerary" view (design doc
@@ -22,8 +23,13 @@ import { rosterUI } from '../ui/rosterUI.js';
  *
  * Routes:
  *   Enter / Z   → Explore the highlighted island
- *   B           → Open Shop overlay (purchase islands)
+ *   R           → Open Roster overlay (manage band)
+ *   I           → View inventory (read-only)
  *   Esc         → Title
+ *
+ * The shop is reachable only from inside Music Plaza (handled by
+ * exploreScene), so the player has to physically walk into the hub
+ * to buy islands or items.
  *
  * @type {import('../engine/sceneManager.js').Scene}
  */
@@ -34,15 +40,19 @@ export const worldMapScene = (() => {
   let overlay = null;
   /** @type {(() => void)[]} */
   let unsubs = [];
+  /** @type {(() => void)[]} */
+  let pointerUnbinds = [];
+  /** @type {(() => void)[]} */
+  let cardUnbinds = [];
   /** Currently highlighted index into `ownedIds`. */
   let selected = 0;
   /** Snapshot of owned ids each render — re-read whenever state changes. */
   /** @type {string[]} */
   let ownedIds = [];
-  /** True while the shop overlay owns input. */
-  let shopOpen = false;
   /** True while the roster overlay owns input. */
   let rosterOpen = false;
+  /** True while the inventory viewer owns input. */
+  let inventoryOpen = false;
 
   function readOwned() {
     const cfg = /** @type {Record<string, any>} */ (getConfig('islands'));
@@ -130,6 +140,30 @@ export const worldMapScene = (() => {
           color: #e8edf2; background: rgba(255,255,255,0.04);
           font-family: inherit; font-size: 11px;
         }
+        #worldmap-overlay .card {
+          cursor: pointer; touch-action: manipulation;
+          -webkit-tap-highlight-color: transparent; user-select: none;
+        }
+        #worldmap-overlay .actions {
+          margin-top: 12px; display: flex; gap: 8px; flex-wrap: wrap;
+          justify-content: center;
+        }
+        #worldmap-overlay .actions button {
+          padding: 8px 14px;
+          background: rgba(14, 18, 26, 0.85);
+          border: 1px solid #3a4756; border-radius: 6px;
+          color: #e8edf2; font-family: inherit; font-size: 12px;
+          letter-spacing: 1px; cursor: pointer;
+          touch-action: manipulation;
+          -webkit-tap-highlight-color: transparent;
+        }
+        #worldmap-overlay .actions button .key {
+          color: #ffd884; font-weight: 700; margin-right: 6px;
+        }
+        #worldmap-overlay .actions button:active {
+          background: rgba(255, 185, 73, 0.15);
+          border-color: #ffb949;
+        }
         #worldmap-overlay .empty {
           padding: 24px; color: #8a96a4; font-size: 13px; text-align: center;
         }
@@ -141,9 +175,15 @@ export const worldMapScene = (() => {
       <div class="controls">
         <kbd>←</kbd>/<kbd>→</kbd> select &nbsp;·&nbsp;
         <kbd>Enter</kbd>/<kbd>Z</kbd> enter island &nbsp;·&nbsp;
-        <kbd>B</kbd> shop &nbsp;·&nbsp;
         <kbd>R</kbd> roster &nbsp;·&nbsp;
+        <kbd>I</kbd> inventory &nbsp;·&nbsp;
         <kbd>Esc</kbd> title
+      </div>
+      <div class="actions" data-bind="actions">
+        <button data-key="KeyZ"><span class="key">Z</span>Enter</button>
+        <button data-key="KeyR"><span class="key">R</span>Roster</button>
+        <button data-key="KeyI"><span class="key">I</span>Inventory</button>
+        <button data-key="Escape"><span class="key">Esc</span>Title</button>
       </div>
     `;
     document.body.appendChild(root);
@@ -171,9 +211,13 @@ export const worldMapScene = (() => {
     const grid = overlay.querySelector('[data-bind="grid"]');
     if (!grid) return;
     if (ownedIds.length === 0) {
-      grid.innerHTML = '<div class="empty">No islands yet — press <kbd>B</kbd> to visit the shop.</div>';
+      grid.innerHTML = '<div class="empty">No islands yet — enter Music Plaza, then press <kbd>B</kbd> inside to shop.</div>';
       return;
     }
+    // Cards rebuild per render — drop stale click bindings.
+    for (const u of cardUnbinds) u();
+    cardUnbinds = [];
+
     grid.innerHTML = ownedIds
       .map((id, idx) => {
         const def = cfg[id] ?? { name: id, rarity: '—', summary: '' };
@@ -188,6 +232,23 @@ export const worldMapScene = (() => {
         `;
       })
       .join('');
+
+    // Tap selects; tapping the already-selected card enters.
+    grid.querySelectorAll('.card[data-idx]').forEach((cardEl) => {
+      const idxAttr = cardEl.getAttribute('data-idx');
+      const idx = idxAttr ? Number(idxAttr) : -1;
+      if (idx < 0) return;
+      cardUnbinds.push(
+        bindAsClick(/** @type {HTMLElement} */ (cardEl), () => {
+          if (idx === selected) {
+            enterSelected();
+          } else {
+            selected = idx;
+            render();
+          }
+        })
+      );
+    });
   }
 
   function enterSelected() {
@@ -197,15 +258,6 @@ export const worldMapScene = (() => {
     sceneManager.transition('explore');
   }
 
-  function openShop() {
-    if (shopOpen) return;
-    shopOpen = true;
-    shopUI.show(() => {
-      shopOpen = false;
-      render();
-    });
-  }
-
   function openRoster() {
     if (rosterOpen) return;
     rosterOpen = true;
@@ -213,6 +265,34 @@ export const worldMapScene = (() => {
       rosterOpen = false;
       render();
     });
+  }
+
+  function openInventory() {
+    if (inventoryOpen) return;
+    const items = /** @type {Record<string, any>} */ (getConfig('items'));
+    const inv = getState().inventory ?? {};
+    const entries = Object.entries(inv)
+      .filter(([, c]) => Number(c) > 0)
+      .map(([id, count]) => {
+        const def = items[id] ?? { name: id, summary: '' };
+        return {
+          id,
+          name: def.name ?? id,
+          summary: def.summary ?? '',
+          count: Number(count),
+        };
+      })
+      .sort((a, b) => a.name.localeCompare(b.name));
+    inventoryOpen = true;
+    itemMenu.show(
+      entries,
+      () => {},
+      () => {
+        inventoryOpen = false;
+        render();
+      },
+      { readOnly: true }
+    );
   }
 
   return {
@@ -238,14 +318,29 @@ export const worldMapScene = (() => {
       overlay = buildOverlay();
       render();
 
+      // Footer buttons mirror the keyboard shortcuts. Cards and the
+      // shop hint are rebound on each render() pass.
+      overlay.querySelectorAll('.actions button[data-key]').forEach((btn) => {
+        const code = btn.getAttribute('data-key');
+        if (code) pointerUnbinds.push(
+          bindAsKey(/** @type {HTMLElement} */ (btn), code)
+        );
+      });
+
       unsubs.push(
         eventBus.on(
           'input.keyDown',
           /** @param {{ code: string }} payload */
           (payload) => {
             if (!payload) return;
+            // Inventory is read-only — forward keys to itemMenu so
+            // Esc / I closes, then bail.
+            if (inventoryOpen) {
+              itemMenu.handleKey(payload.code);
+              return;
+            }
             // Sub-overlays swallow input while open.
-            if (shopOpen || rosterOpen) return;
+            if (rosterOpen) return;
             switch (payload.code) {
               case 'ArrowLeft':
               case 'KeyA':
@@ -265,11 +360,11 @@ export const worldMapScene = (() => {
               case 'KeyZ':
                 enterSelected();
                 break;
-              case 'KeyB':
-                openShop();
-                break;
               case 'KeyR':
                 openRoster();
+                break;
+              case 'KeyI':
+                openInventory();
                 break;
               case 'Escape':
                 sceneManager.transition('title');
@@ -281,7 +376,7 @@ export const worldMapScene = (() => {
         ),
         // State changes (purchase, cred grant, notes change) re-render.
         eventBus.on('stateChanged', () => {
-          if (!shopOpen && !rosterOpen) render();
+          if (!rosterOpen && !inventoryOpen) render();
         })
       );
     },
@@ -289,13 +384,17 @@ export const worldMapScene = (() => {
     exit() {
       for (const u of unsubs) u();
       unsubs = [];
-      if (shopOpen) {
-        shopUI.hide();
-        shopOpen = false;
-      }
+      for (const u of pointerUnbinds) u();
+      pointerUnbinds = [];
+      for (const u of cardUnbinds) u();
+      cardUnbinds = [];
       if (rosterOpen) {
         rosterUI.hide();
         rosterOpen = false;
+      }
+      if (inventoryOpen) {
+        itemMenu.hide();
+        inventoryOpen = false;
       }
       overlay?.remove();
       overlay = null;

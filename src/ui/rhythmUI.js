@@ -2,6 +2,7 @@
 
 import { eventBus } from '../engine/eventBus.js';
 import { LANE_KEYS } from '../engine/rhythmEngine.js';
+import { bindLaneTap } from '../util/pointer.js';
 
 /**
  * Rhythm UI — DOM overlay for the Jam Clash minigame. Renders four
@@ -31,8 +32,14 @@ class RhythmUI {
   #lanes = [];
   /** @type {HTMLElement[]} */
   #flashEls = [];
+  /** Per-lane "hold-before-fade" timers so back-to-back judgments
+   *  on the same lane reset cleanly instead of stomping each other. */
+  /** @type {(ReturnType<typeof setTimeout> | null)[]} */
+  #flashTimers = [];
   /** @type {(() => void)[]} */
   #unsubs = [];
+  /** @type {(() => void)[]} */
+  #laneTapUnbinds = [];
   /** @type {() => import('../engine/rhythmEngine.js').LiveNote[]} */
   #getLiveNotes = () => [];
   /** @type {() => number} */
@@ -91,6 +98,15 @@ class RhythmUI {
           background: rgba(255,255,255,0.03);
           overflow: hidden;
           border-radius: 3px;
+          /* Lanes are touch tap targets — the overlay root is
+             pointer-events: none so notes/flashes don't intercept
+             clicks elsewhere, but each lane re-enables pointer
+             events so finger taps land on it. Mouse clicks are
+             intentionally not bound (see bindLaneTap header). */
+          pointer-events: auto;
+          touch-action: manipulation;
+          user-select: none;
+          -webkit-tap-highlight-color: transparent;
         }
         #rhythm-ui .hit-zone {
           position: absolute; left: 0; right: 0;
@@ -117,7 +133,7 @@ class RhythmUI {
           position: absolute; inset: 0;
           display: flex; align-items: center; justify-content: center;
           font-size: 14px; font-weight: bold;
-          opacity: 0; transition: opacity 220ms ease-out;
+          opacity: 0; transition: opacity 600ms ease-out;
           pointer-events: none;
         }
         #rhythm-ui .flash.show { opacity: 1; transition: opacity 0ms; }
@@ -202,6 +218,14 @@ class RhythmUI {
     this.#flashEls = LANE_KEYS.map(
       (_, i) => /** @type {HTMLElement} */ (root.querySelector(`[data-lane-flash="${i}"]`))
     );
+    this.#flashTimers = LANE_KEYS.map(() => null);
+
+    // Multi-touch lane taps. Each lane is its own touch target, so
+    // pressing two fingers down at the same time fires both keys
+    // independently — one per finger.
+    this.#laneTapUnbinds = this.#lanes.map((el, i) =>
+      bindLaneTap(el, LANE_KEYS[i])
+    );
 
     this.#unsubs.push(
       eventBus.on(
@@ -266,6 +290,10 @@ class RhythmUI {
   hide() {
     for (const u of this.#unsubs) u();
     this.#unsubs = [];
+    for (const u of this.#laneTapUnbinds) u();
+    this.#laneTapUnbinds = [];
+    for (const t of this.#flashTimers) if (t) clearTimeout(t);
+    this.#flashTimers = [];
     this.#noteEls.clear();
     if (this.#readyTimer) {
       clearTimeout(this.#readyTimer);
@@ -309,11 +337,18 @@ class RhythmUI {
     const el = this.#flashEls[lane];
     if (!el) return;
     el.textContent = critical ? 'CRIT!' : grade.toUpperCase();
-    const classes = critical ? `flash ${grade} critical show` : `flash ${grade} show`;
-    el.className = classes;
-    // Force reflow so the next class change re-triggers the transition.
+    const baseClasses = critical ? `flash ${grade} critical` : `flash ${grade}`;
+    // Snap to full opacity, hold for 320ms, then drop the `show`
+    // class so the CSS transition fades it out over its own duration
+    // (~600ms). Total visible window: ~900ms — long enough to read
+    // each grade without stacking on the next note's judgment.
+    el.className = baseClasses + ' show';
     void el.offsetWidth;
-    el.className = critical ? `flash ${grade} critical` : `flash ${grade}`;
+    if (this.#flashTimers[lane]) clearTimeout(this.#flashTimers[lane]);
+    this.#flashTimers[lane] = setTimeout(() => {
+      el.className = baseClasses;
+      this.#flashTimers[lane] = null;
+    }, 320);
   }
 
   /** @param {number} streak */

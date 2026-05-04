@@ -276,6 +276,7 @@ class SaveSystem {
           action?.type === 'SELECT_MANAGER_STYLE' ||
           action?.type === 'PURCHASE_ISLAND' ||
           action?.type === 'RECRUIT_RIVAL' ||
+          action?.type === 'RELEASE_RIVAL' ||
           action?.type === 'ADD_TO_TEAM' ||
           action?.type === 'REMOVE_FROM_TEAM' ||
           action?.type === 'REORDER_TEAM' ||

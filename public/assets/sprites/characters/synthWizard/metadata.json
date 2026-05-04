@@ -1,0 +1,82 @@
+{
+  "character": {
+    "id": "46e71565-d80c-433a-a443-8688d0256292",
+    "name": "female rock keyboardist",
+    "prompt": "female rock keyboardist",
+    "size": {
+      "width": 124,
+      "height": 124
+    },
+    "template_id": "mannequin",
+    "directions": 8,
+    "view": "low top-down",
+    "created_at": "2026-04-30T03:39:09.379237+00:00"
+  },
+  "frames": {
+    "rotations": {
+      "south": "rotations/south.png",
+      "south-east": "rotations/south-east.png",
+      "east": "rotations/east.png",
+      "north-east": "rotations/north-east.png",
+      "north": "rotations/north.png",
+      "north-west": "rotations/north-west.png",
+      "west": "rotations/west.png",
+      "south-west": "rotations/south-west.png"
+    },
+    "animations": {
+      "performing_passionately_with_fire_aura-7844889e": {
+        "south-east": [
+          "animations/performing_passionately_with_fire_aura-7844889e/south-east/frame_000.png",
+          "animations/performing_passionately_with_fire_aura-7844889e/south-east/frame_001.png",
+          "animations/performing_passionately_with_fire_aura-7844889e/south-east/frame_002.png",
+          "animations/performing_passionately_with_fire_aura-7844889e/south-east/frame_003.png",
+          "animations/performing_passionately_with_fire_aura-7844889e/south-east/frame_004.png",
+          "animations/performing_passionately_with_fire_aura-7844889e/south-east/frame_005.png",
+          "animations/performing_passionately_with_fire_aura-7844889e/south-east/frame_006.png",
+          "animations/performing_passionately_with_fire_aura-7844889e/south-east/frame_007.png",
+          "animations/performing_passionately_with_fire_aura-7844889e/south-east/frame_008.png"
+        ]
+      },
+      "Fight_Stance_Idle-a21e7336": {
+        "south-east": [
+          "animations/Fight_Stance_Idle-a21e7336/south-east/frame_000.png",
+          "animations/Fight_Stance_Idle-a21e7336/south-east/frame_001.png",
+          "animations/Fight_Stance_Idle-a21e7336/south-east/frame_002.png",
+          "animations/Fight_Stance_Idle-a21e7336/south-east/frame_003.png",
+          "animations/Fight_Stance_Idle-a21e7336/south-east/frame_004.png",
+          "animations/Fight_Stance_Idle-a21e7336/south-east/frame_005.png",
+          "animations/Fight_Stance_Idle-a21e7336/south-east/frame_006.png",
+          "animations/Fight_Stance_Idle-a21e7336/south-east/frame_007.png"
+        ]
+      },
+      "right_arm_raised_preparing_to_perform-6e06f494": {
+        "south-east": [
+          "animations/right_arm_raised_preparing_to_perform-6e06f494/south-east/frame_000.png",
+          "animations/right_arm_raised_preparing_to_perform-6e06f494/south-east/frame_001.png",
+          "animations/right_arm_raised_preparing_to_perform-6e06f494/south-east/frame_002.png",
+          "animations/right_arm_raised_preparing_to_perform-6e06f494/south-east/frame_003.png",
+          "animations/right_arm_raised_preparing_to_perform-6e06f494/south-east/frame_004.png",
+          "animations/right_arm_raised_preparing_to_perform-6e06f494/south-east/frame_005.png",
+          "animations/right_arm_raised_preparing_to_perform-6e06f494/south-east/frame_006.png",
+          "animations/right_arm_raised_preparing_to_perform-6e06f494/south-east/frame_007.png",
+          "animations/right_arm_raised_preparing_to_perform-6e06f494/south-east/frame_008.png"
+        ]
+      },
+      "doing_1_chord_with_strike_effect-a6539986": {
+        "south-east": [
+          "animations/doing_1_chord_with_strike_effect-a6539986/south-east/frame_000.png",
+          "animations/doing_1_chord_with_strike_effect-a6539986/south-east/frame_001.png",
+          "animations/doing_1_chord_with_strike_effect-a6539986/south-east/frame_002.png",
+          "animations/doing_1_chord_with_strike_effect-a6539986/south-east/frame_003.png",
+          "animations/doing_1_chord_with_strike_effect-a6539986/south-east/frame_004.png",
+          "animations/doing_1_chord_with_strike_effect-a6539986/south-east/frame_005.png",
+          "animations/doing_1_chord_with_strike_effect-a6539986/south-east/frame_006.png",
+          "animations/doing_1_chord_with_strike_effect-a6539986/south-east/frame_007.png",
+          "animations/doing_1_chord_with_strike_effect-a6539986/south-east/frame_008.png"
+        ]
+      }
+    }
+  },
+  "export_version": "2.0",
+  "export_date": "2026-05-01T12:13:57.250556"
+}

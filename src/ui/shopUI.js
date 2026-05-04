@@ -3,6 +3,7 @@
 import { eventBus } from '../engine/eventBus.js';
 import { getConfig } from '../engine/configService.js';
 import { dispatch, getState, expToNextCred } from '../engine/gameState.js';
+import { bindAsClick } from '../util/pointer.js';
 
 /**
  * Shop UI — two tabs:
@@ -33,6 +34,10 @@ class ShopUI {
   #root = null;
   /** @type {(() => void)[]} */
   #unsubs = [];
+  /** @type {(() => void)[]} */
+  #staticBinds = [];
+  /** @type {(() => void)[]} */
+  #rowBinds = [];
   /** @type {(() => void) | null} */
   #onClose = null;
   /** @type {ShopTab} */
@@ -62,11 +67,40 @@ class ShopUI {
       // Re-render on any state change so cred/notes/owned/inventory updates reflect.
       eventBus.on('stateChanged', () => this.#render())
     );
+
+    // Static buttons (tabs, close). Rows are bound per-render in
+    // #bindRows() because the inner HTML is regenerated each pass.
+    const tabIslands = /** @type {HTMLElement | null} */ (
+      this.#root.querySelector('[data-tab="islands"]')
+    );
+    if (tabIslands) {
+      this.#staticBinds.push(
+        bindAsClick(tabIslands, () => this.#switchTab('islands'))
+      );
+    }
+    const tabItems = /** @type {HTMLElement | null} */ (
+      this.#root.querySelector('[data-tab="items"]')
+    );
+    if (tabItems) {
+      this.#staticBinds.push(
+        bindAsClick(tabItems, () => this.#switchTab('items'))
+      );
+    }
+    const closeBtn = /** @type {HTMLElement | null} */ (
+      this.#root.querySelector('[data-bind="close"]')
+    );
+    if (closeBtn) {
+      this.#staticBinds.push(bindAsClick(closeBtn, () => this.#close()));
+    }
   }
 
   hide() {
     for (const u of this.#unsubs) u();
     this.#unsubs = [];
+    for (const u of this.#staticBinds) u();
+    this.#staticBinds = [];
+    for (const u of this.#rowBinds) u();
+    this.#rowBinds = [];
     if (this.#flashTimer) {
       clearTimeout(this.#flashTimer);
       this.#flashTimer = null;
@@ -257,6 +291,33 @@ class ShopUI {
     } else {
       list.innerHTML = this.#renderItemsList();
     }
+    this.#bindRows();
+  }
+
+  /**
+   * Re-bind row clicks after each render. Tap selects a row; tapping
+   * the already-selected row commits the purchase (mirrors keyboard
+   * "select then Enter").
+   */
+  #bindRows() {
+    if (!this.#root) return;
+    for (const u of this.#rowBinds) u();
+    this.#rowBinds = [];
+    this.#root.querySelectorAll('.row[data-idx]').forEach((rowEl) => {
+      const idxAttr = rowEl.getAttribute('data-idx');
+      const idx = idxAttr ? Number(idxAttr) : -1;
+      if (idx < 0) return;
+      this.#rowBinds.push(
+        bindAsClick(/** @type {HTMLElement} */ (rowEl), () => {
+          if (idx === this.#selected) {
+            this.#tryPurchase();
+          } else {
+            this.#selected = idx;
+            this.#render();
+          }
+        })
+      );
+    });
   }
 
   #renderIslandsList() {
@@ -377,8 +438,21 @@ class ShopUI {
           background: rgba(14, 18, 26, 0.92);
           border: 1px solid #2a3340; border-radius: 6px;
           font-size: 12px; letter-spacing: 2px; text-transform: uppercase;
-          color: #8a96a4; cursor: default;
+          color: #8a96a4; cursor: pointer;
           transition: all 140ms ease-out;
+          touch-action: manipulation;
+          -webkit-tap-highlight-color: transparent;
+          user-select: none;
+        }
+        #shop-overlay .row { cursor: pointer; }
+        #shop-overlay .close-btn {
+          margin-top: 14px; padding: 8px 18px;
+          background: rgba(110, 193, 255, 0.10);
+          border: 1px solid #6ec1ff; border-radius: 6px;
+          color: #e8edf2; font-family: inherit; font-size: 12px;
+          letter-spacing: 1.5px; cursor: pointer;
+          touch-action: manipulation;
+          -webkit-tap-highlight-color: transparent;
         }
         #shop-overlay .tab.active {
           color: #ffd884;
@@ -492,6 +566,7 @@ class ShopUI {
         <kbd>Enter</kbd> buy &nbsp;·&nbsp;
         <kbd>B</kbd>/<kbd>Esc</kbd> close
       </div>
+      <button class="close-btn" data-bind="close">Close</button>
     `;
     return root;
   }

@@ -1,0 +1,82 @@
+{
+  "character": {
+    "id": "872b86ec-13d7-4311-b8d1-abba98a41532",
+    "name": "male drummer with electronic drums",
+    "prompt": "male drummer with electronic drums",
+    "size": {
+      "width": 124,
+      "height": 124
+    },
+    "template_id": "mannequin",
+    "directions": 8,
+    "view": "low top-down",
+    "created_at": "2026-04-30T06:43:38.206283+00:00"
+  },
+  "frames": {
+    "rotations": {
+      "south": "rotations/south.png",
+      "south-east": "rotations/south-east.png",
+      "east": "rotations/east.png",
+      "north-east": "rotations/north-east.png",
+      "north": "rotations/north.png",
+      "north-west": "rotations/north-west.png",
+      "west": "rotations/west.png",
+      "south-west": "rotations/south-west.png"
+    },
+    "animations": {
+      "both_hands_raised-1b91c669": {
+        "south-east": [
+          "animations/both_hands_raised-1b91c669/south-east/frame_000.png",
+          "animations/both_hands_raised-1b91c669/south-east/frame_001.png",
+          "animations/both_hands_raised-1b91c669/south-east/frame_002.png",
+          "animations/both_hands_raised-1b91c669/south-east/frame_003.png",
+          "animations/both_hands_raised-1b91c669/south-east/frame_004.png",
+          "animations/both_hands_raised-1b91c669/south-east/frame_005.png",
+          "animations/both_hands_raised-1b91c669/south-east/frame_006.png",
+          "animations/both_hands_raised-1b91c669/south-east/frame_007.png",
+          "animations/both_hands_raised-1b91c669/south-east/frame_008.png"
+        ]
+      },
+      "hitting_the_drums_once-82a4d8e5": {
+        "south-east": [
+          "animations/hitting_the_drums_once-82a4d8e5/south-east/frame_000.png",
+          "animations/hitting_the_drums_once-82a4d8e5/south-east/frame_001.png",
+          "animations/hitting_the_drums_once-82a4d8e5/south-east/frame_002.png",
+          "animations/hitting_the_drums_once-82a4d8e5/south-east/frame_003.png",
+          "animations/hitting_the_drums_once-82a4d8e5/south-east/frame_004.png",
+          "animations/hitting_the_drums_once-82a4d8e5/south-east/frame_005.png",
+          "animations/hitting_the_drums_once-82a4d8e5/south-east/frame_006.png",
+          "animations/hitting_the_drums_once-82a4d8e5/south-east/frame_007.png",
+          "animations/hitting_the_drums_once-82a4d8e5/south-east/frame_008.png"
+        ]
+      },
+      "Fight_Stance_Idle-dc94ac89": {
+        "south-east": [
+          "animations/Fight_Stance_Idle-dc94ac89/south-east/frame_000.png",
+          "animations/Fight_Stance_Idle-dc94ac89/south-east/frame_001.png",
+          "animations/Fight_Stance_Idle-dc94ac89/south-east/frame_002.png",
+          "animations/Fight_Stance_Idle-dc94ac89/south-east/frame_003.png",
+          "animations/Fight_Stance_Idle-dc94ac89/south-east/frame_004.png",
+          "animations/Fight_Stance_Idle-dc94ac89/south-east/frame_005.png",
+          "animations/Fight_Stance_Idle-dc94ac89/south-east/frame_006.png",
+          "animations/Fight_Stance_Idle-dc94ac89/south-east/frame_007.png"
+        ]
+      },
+      "playing_the_drums_powerfully_with_aura-fe44a3f7": {
+        "south-east": [
+          "animations/playing_the_drums_powerfully_with_aura-fe44a3f7/south-east/frame_000.png",
+          "animations/playing_the_drums_powerfully_with_aura-fe44a3f7/south-east/frame_001.png",
+          "animations/playing_the_drums_powerfully_with_aura-fe44a3f7/south-east/frame_002.png",
+          "animations/playing_the_drums_powerfully_with_aura-fe44a3f7/south-east/frame_003.png",
+          "animations/playing_the_drums_powerfully_with_aura-fe44a3f7/south-east/frame_004.png",
+          "animations/playing_the_drums_powerfully_with_aura-fe44a3f7/south-east/frame_005.png",
+          "animations/playing_the_drums_powerfully_with_aura-fe44a3f7/south-east/frame_006.png",
+          "animations/playing_the_drums_powerfully_with_aura-fe44a3f7/south-east/frame_007.png",
+          "animations/playing_the_drums_powerfully_with_aura-fe44a3f7/south-east/frame_008.png"
+        ]
+      }
+    }
+  },
+  "export_version": "2.0",
+  "export_date": "2026-05-01T11:47:24.171200"
+}

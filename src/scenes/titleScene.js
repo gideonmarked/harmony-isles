@@ -7,6 +7,7 @@ import { sceneManager } from '../engine/sceneManager.js';
 import { getConfig } from '../engine/configService.js';
 import { dispatch } from '../engine/gameState.js';
 import { saveSystem, MAX_SLOTS } from '../engine/saveSystem.js';
+import { bindAsClick } from '../util/pointer.js';
 
 /**
  * Title scene — two views in sequence:
@@ -30,6 +31,8 @@ export const titleScene = (() => {
   let overlay = null;
   /** @type {(() => void) | null} */
   let unsubscribe = null;
+  /** @type {(() => void)[]} */
+  let cardUnbinds = [];
 
   /** @type {'slots' | 'styles'} */
   let view = 'slots';
@@ -212,6 +215,15 @@ export const titleScene = (() => {
       <kbd>Enter</kbd>/<kbd>Z</kbd> choose &nbsp;·&nbsp;
       <kbd>Shift</kbd>+<kbd>Del</kbd> wipe slot
     `;
+
+    bindCardClicks('.slot', (idx) => {
+      if (idx === slotSelected) {
+        chooseSlot();
+      } else {
+        slotSelected = idx;
+        renderSlots();
+      }
+    });
   }
 
   function renderStyles() {
@@ -246,6 +258,38 @@ export const titleScene = (() => {
       <kbd>Enter</kbd>/<kbd>Z</kbd> start &nbsp;·&nbsp;
       <kbd>Esc</kbd> back
     `;
+
+    bindCardClicks('.style', (idx) => {
+      if (idx === styleSelected) {
+        startWithStyle();
+      } else {
+        styleSelected = idx;
+        renderStyles();
+      }
+    });
+  }
+
+  /**
+   * Re-bind clickable cards after a re-render. Cards keep `data-idx`;
+   * one tap selects, a second tap on the already-selected card commits
+   * via the supplied callback.
+   *
+   * @param {string} selector
+   * @param {(idx: number) => void} onCommit
+   */
+  function bindCardClicks(selector, onCommit) {
+    if (!overlay) return;
+    for (const u of cardUnbinds) u();
+    cardUnbinds = [];
+    overlay.querySelectorAll(`${selector}[data-idx]`).forEach((el) => {
+      const idxAttr = el.getAttribute('data-idx');
+      const idx = idxAttr ? Number(idxAttr) : -1;
+      if (idx < 0) return;
+      const htmlEl = /** @type {HTMLElement} */ (el);
+      htmlEl.style.cursor = 'pointer';
+      htmlEl.style.touchAction = 'manipulation';
+      cardUnbinds.push(bindAsClick(htmlEl, () => onCommit(idx)));
+    });
   }
 
   function chooseSlot() {
@@ -394,6 +438,8 @@ export const titleScene = (() => {
     exit() {
       unsubscribe?.();
       unsubscribe = null;
+      for (const u of cardUnbinds) u();
+      cardUnbinds = [];
       overlay?.remove();
       overlay = null;
       if (group?.parent) group.parent.remove(group);

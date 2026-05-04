@@ -52,7 +52,15 @@ import { eventBus } from './eventBus.js';
  * @property {Record<string, string>} [sprites]
  * @property {Record<string, string>} [tilemaps]
  * @property {Record<string, string>} [audio]
+ *
+ * @typedef {Record<string, THREE.Texture[]>} CharacterAnimSet
  */
+
+/** Animation states probed under <id>/animations/. */
+const CHARACTER_ANIM_STATES = ['idle', 'ready', 'strum', 'perform'];
+
+/** Cap on contiguous frames per animation. Generous — sprites cap at ~9. */
+const MAX_FRAMES_PER_ANIM = 16;
 
 /** Magenta checker — 8x8, alternating pure magenta and dark. Loud. */
 function makeMagentaFallback() {
@@ -88,6 +96,10 @@ class AssetLoader {
   #inflight = new Map();
   /** @type {THREE.Texture | null} */
   #fallback = null;
+  /** @type {Map<string, CharacterAnimSet>} */
+  #charAnimCache = new Map();
+  /** @type {Map<string, Promise<CharacterAnimSet>>} */
+  #charAnimInflight = new Map();
 
   /** Lazily-built magenta texture. Shared across all fallback calls. */
   getFallbackTexture() {
@@ -179,12 +191,137 @@ class AssetLoader {
     return promise;
   }
 
+  /**
+   * Load every animation a character ships with. Convention:
+   *   /assets/sprites/characters/<id>/animations/<state>/[<direction>/]frame_NNN.png
+   *
+   * Probes `idle` / `ready` / `strum` / `perform`. For each state the
+   * loader tries the direct folder first, then a `south-east/`
+   * sub-directory (the exporter sometimes nests by direction). It
+   * loads `frame_000` to confirm the animation exists, then
+   * parallel-probes 1..MAX-1 and stops at the first 404 — the array
+   * is the contiguous run.
+   *
+   * Missing states resolve to empty arrays; the caller falls back to
+   * the character's `default.png`.
+   *
+   * @param {string} id  Folder name under `characters/`.
+   * @returns {Promise<CharacterAnimSet>}
+   */
+  loadCharacterAnimations(id) {
+    const cached = this.#charAnimCache.get(id);
+    if (cached) return Promise.resolve(cached);
+    const inflight = this.#charAnimInflight.get(id);
+    if (inflight) return inflight;
+
+    const promise = (async () => {
+      /** @type {CharacterAnimSet} */
+      const out = {};
+      // Run all four states in parallel — the exporter writes all of
+      // them at once, so there's no benefit to sequencing.
+      const results = await Promise.all(
+        CHARACTER_ANIM_STATES.map((state) => this.#probeAnimation(id, state))
+      );
+      CHARACTER_ANIM_STATES.forEach((state, i) => {
+        out[state] = results[i];
+      });
+      this.#charAnimCache.set(id, out);
+      this.#charAnimInflight.delete(id);
+      eventBus.emit('asset.characterLoaded', {
+        id,
+        frameCounts: Object.fromEntries(
+          Object.entries(out).map(([k, v]) => [k, v.length])
+        ),
+      });
+      return out;
+    })();
+    this.#charAnimInflight.set(id, promise);
+    return promise;
+  }
+
+  /** Sync getter — the cached animation set, or null until ready. */
+  getCharacterAnimations(id) {
+    return this.#charAnimCache.get(id) ?? null;
+  }
+
+  /**
+   * Load `<id>/default.png`. Resolves to null when the folder doesn't
+   * exist — the caller decides the fallback (Character tries the
+   * global default art, then a flat color quad). Distinct from
+   * {@link loadTexture}: this path is silent on 404 so probing
+   * convention-based folders doesn't spam the console.
+   *
+   * @param {string} id
+   * @returns {Promise<THREE.Texture | null>}
+   */
+  loadCharacterDefault(id) {
+    return this.#tryLoad(`/assets/sprites/characters/${id}/default.png`);
+  }
+
+  /**
+   * Try the direct path then the per-direction nested path. Returns
+   * the contiguous array of frame textures; empty if the animation
+   * isn't present.
+   *
+   * @param {string} id @param {string} state
+   * @returns {Promise<THREE.Texture[]>}
+   */
+  async #probeAnimation(id, state) {
+    const candidates = [
+      `/assets/sprites/characters/${id}/animations/${state}`,
+      `/assets/sprites/characters/${id}/animations/${state}/south-east`,
+    ];
+    for (const root of candidates) {
+      const f0 = await this.#tryLoad(`${root}/frame_000.png`);
+      if (!f0) continue;
+      const probes = [];
+      for (let i = 1; i < MAX_FRAMES_PER_ANIM; i++) {
+        const n = String(i).padStart(3, '0');
+        probes.push(this.#tryLoad(`${root}/frame_${n}.png`));
+      }
+      const rest = await Promise.all(probes);
+      /** @type {THREE.Texture[]} */
+      const frames = [f0];
+      for (const tex of rest) {
+        if (!tex) break;
+        frames.push(tex);
+      }
+      return frames;
+    }
+    return [];
+  }
+
+  /**
+   * Bare TextureLoader call that resolves null on error. Used by the
+   * frame prober — failures are *expected* (probing past the last
+   * frame), so we suppress the magenta-fallback path the public
+   * `loadTexture` provides.
+   *
+   * @param {string} url
+   * @returns {Promise<THREE.Texture | null>}
+   */
+  #tryLoad(url) {
+    return new Promise((resolve) => {
+      this.#threeLoader.load(
+        url,
+        (tex) => {
+          tex.magFilter = THREE.NearestFilter;
+          tex.minFilter = THREE.NearestFilter;
+          resolve(tex);
+        },
+        undefined,
+        () => resolve(null)
+      );
+    });
+  }
+
   /** Diagnostic dump for the bbox debug overlay. */
   debugSnapshot() {
     return {
       registered: Array.from(this.#paths.entries()),
       cached: Array.from(this.#cache.keys()),
       inflight: Array.from(this.#inflight.keys()),
+      characters: Array.from(this.#charAnimCache.keys()),
     };
   }
 }

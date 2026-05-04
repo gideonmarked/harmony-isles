@@ -2,6 +2,7 @@
 
 import { eventBus } from '../engine/eventBus.js';
 import { getState, expToNextCred } from '../engine/gameState.js';
+import { bindAsKey, bindAsHeldKey } from '../util/pointer.js';
 
 /**
  * Explore HUD — top-left island name + step counter, bottom-left
@@ -19,6 +20,8 @@ class ExploreHud {
   #root = null;
   /** @type {(() => void)[]} */
   #unsubs = [];
+  /** @type {(() => void)[]} */
+  #buttonUnbinds = [];
   /** @type {ReturnType<typeof setTimeout> | null} */
   #telegraphTimer = null;
 
@@ -102,6 +105,56 @@ class ExploreHud {
           background: radial-gradient(circle at 50% 40%, rgba(110,193,255,0.18), transparent 60%);
         }
         #explore-hud .vignette.show { opacity: 1; }
+
+        #explore-hud .dpad {
+          position: absolute; bottom: 24px; right: 24px;
+          width: 156px; height: 156px;
+          pointer-events: none;
+          display: grid;
+          grid-template-columns: 52px 52px 52px;
+          grid-template-rows: 52px 52px 52px;
+          gap: 0;
+        }
+        #explore-hud .dpad button {
+          pointer-events: auto;
+          background: rgba(14, 18, 26, 0.78);
+          border: 1px solid #3a4756;
+          color: #e8edf2;
+          font-family: inherit; font-size: 18px; font-weight: 700;
+          touch-action: none; user-select: none;
+          -webkit-tap-highlight-color: transparent;
+          cursor: pointer;
+        }
+        #explore-hud .dpad button.held {
+          background: rgba(110, 193, 255, 0.28);
+          border-color: #6ec1ff;
+        }
+        #explore-hud .dpad .up    { grid-column: 2; grid-row: 1; border-radius: 8px 8px 0 0; }
+        #explore-hud .dpad .left  { grid-column: 1; grid-row: 2; border-radius: 8px 0 0 8px; }
+        #explore-hud .dpad .right { grid-column: 3; grid-row: 2; border-radius: 0 8px 8px 0; }
+        #explore-hud .dpad .down  { grid-column: 2; grid-row: 3; border-radius: 0 0 8px 8px; }
+
+        #explore-hud .scene-actions {
+          position: absolute; bottom: 24px; right: 200px;
+          display: flex; flex-direction: column; gap: 6px;
+          pointer-events: auto;
+        }
+        #explore-hud .scene-actions button {
+          padding: 10px 14px;
+          background: rgba(14, 18, 26, 0.85);
+          border: 1px solid #3a4756; border-radius: 6px;
+          color: #e8edf2; font-family: inherit; font-size: 12px;
+          letter-spacing: 1px; cursor: pointer;
+          touch-action: manipulation;
+          -webkit-tap-highlight-color: transparent;
+        }
+        #explore-hud .scene-actions button .key {
+          color: #ffd884; font-weight: 700; margin-right: 4px;
+        }
+        #explore-hud .scene-actions button:active {
+          background: rgba(110, 193, 255, 0.18);
+          border-color: #6ec1ff;
+        }
       </style>
       <div class="island-info">
         <div class="label">Island</div>
@@ -113,12 +166,35 @@ class ExploreHud {
       <div class="controls">
         <div><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> walk</div>
         <div><kbd>M</kbd>/<kbd>Esc</kbd> world map</div>
+        <div data-bind="shopHint" style="display:none;"><kbd>B</kbd> shop</div>
+      </div>
+      <div class="scene-actions">
+        <button data-bind="shopBtn" data-key="KeyB" style="display:none;"><span class="key">B</span>Shop</button>
+        <button data-key="KeyM"><span class="key">M</span>World</button>
+      </div>
+      <div class="dpad">
+        <button class="up"    data-dir="KeyW">▲</button>
+        <button class="left"  data-dir="KeyA">◀</button>
+        <button class="right" data-dir="KeyD">▶</button>
+        <button class="down"  data-dir="KeyS">▼</button>
       </div>
       <div class="vignette" data-bind="vignette"></div>
       <div class="telegraph" data-bind="telegraph">!</div>
     `;
     document.body.appendChild(root);
     this.#root = root;
+
+    // D-pad — hold-to-walk. Each direction registers as a held key
+    // so playerOverworld's existing isHeld() chain works unchanged.
+    root.querySelectorAll('.dpad button[data-dir]').forEach((btn) => {
+      const code = btn.getAttribute('data-dir');
+      if (code) this.#buttonUnbinds.push(bindAsHeldKey(/** @type {HTMLElement} */ (btn), code));
+    });
+    // Scene actions — single-tap key emits.
+    root.querySelectorAll('.scene-actions button[data-key]').forEach((btn) => {
+      const code = btn.getAttribute('data-key');
+      if (code) this.#buttonUnbinds.push(bindAsKey(/** @type {HTMLElement} */ (btn), code));
+    });
 
     // Cheap step counter — useful for tuning encounter rates while
     // playtesting and as a "the world is reacting to you" signal.
@@ -150,6 +226,8 @@ class ExploreHud {
   hide() {
     for (const u of this.#unsubs) u();
     this.#unsubs = [];
+    for (const u of this.#buttonUnbinds) u();
+    this.#buttonUnbinds = [];
     if (this.#telegraphTimer) {
       clearTimeout(this.#telegraphTimer);
       this.#telegraphTimer = null;
@@ -159,7 +237,7 @@ class ExploreHud {
   }
 
   /**
-   * @param {{ name: string, rarity: string }} info
+   * @param {{ name: string, rarity: string, shopAvailable?: boolean }} info
    */
   setIsland(info) {
     const name = this.#qs('islandName');
@@ -168,6 +246,14 @@ class ExploreHud {
     if (rarity) {
       rarity.textContent = info.rarity;
       rarity.className = `rarity ${info.rarity}`;
+    }
+    const shopHint = this.#qs('shopHint');
+    if (shopHint) {
+      shopHint.style.display = info.shopAvailable ? '' : 'none';
+    }
+    const shopBtn = this.#qs('shopBtn');
+    if (shopBtn) {
+      shopBtn.style.display = info.shopAvailable ? '' : 'none';
     }
   }
 

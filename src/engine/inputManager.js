@@ -84,6 +84,46 @@ class InputManager {
     this.#pressed.clear();
     this.#justPressed.clear();
   };
+
+  /**
+   * Programmatically mark a key as held. Used by pointer.js so that
+   * on-screen virtual D-pads register as held keys for systems that
+   * read input.isHeld() (player movement, etc.). Idempotent — does
+   * nothing if the key is already pressed, just like the real
+   * keydown handler ignoring OS auto-repeat.
+   *
+   * @param {string} code
+   */
+  simulateDown(code) {
+    if (this.#pressed.has(code)) return;
+    this.#pressed.add(code);
+    this.#justPressed.add(code);
+    eventBus.emit('input.keyDown', {
+      code,
+      shiftKey: false,
+      ctrlKey: false,
+      altKey: false,
+      metaKey: false,
+    });
+  }
+
+  /**
+   * Counterpart to simulateDown — clears the held flag and emits the
+   * keyUp event. Safe to call when the key isn't currently held.
+   *
+   * @param {string} code
+   */
+  simulateUp(code) {
+    if (!this.#pressed.has(code)) return;
+    this.#pressed.delete(code);
+    eventBus.emit('input.keyUp', {
+      code,
+      shiftKey: false,
+      ctrlKey: false,
+      altKey: false,
+      metaKey: false,
+    });
+  }
 }
 
 export const inputManager = new InputManager();

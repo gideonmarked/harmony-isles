@@ -1,6 +1,7 @@
 // @ts-check
 
 import { eventBus } from '../engine/eventBus.js';
+import { bindAsKey } from '../util/pointer.js';
 
 /**
  * Battle HUD — DOM overlay showing player HP, enemy HP, the Hype meter,
@@ -18,6 +19,8 @@ class BattleHud {
   #root = null;
   /** @type {(() => void)[]} */
   #unsubs = [];
+  /** @type {(() => void)[]} */
+  #buttonUnbinds = [];
 
   show() {
     if (this.#root) return;
@@ -127,6 +130,41 @@ class BattleHud {
           0%   { background-position: 0% 50%; }
           100% { background-position: 200% 50%; }
         }
+        #battle-hud .actions {
+          position: absolute;
+          bottom: 16px; left: 16px;
+          display: flex; flex-wrap: wrap; gap: 6px;
+          pointer-events: auto;
+          max-width: 360px;
+        }
+        #battle-hud .actions button {
+          font-family: inherit; font-size: 12px; letter-spacing: 1px;
+          padding: 8px 12px;
+          background: rgba(14, 18, 26, 0.92);
+          border: 1px solid #3a4756; border-radius: 4px;
+          color: #e8edf2; cursor: pointer;
+          touch-action: manipulation;
+          -webkit-tap-highlight-color: transparent;
+        }
+        #battle-hud .actions button:active {
+          background: rgba(110, 193, 255, 0.18);
+          border-color: #6ec1ff;
+        }
+        #battle-hud .actions .key {
+          color: #ffd884; font-weight: 700; margin-right: 4px;
+        }
+        #battle-hud .actions .recruit {
+          background: rgba(92, 224, 160, 0.10);
+          border-color: #5ce0a0; color: #d7ffe8;
+        }
+        #battle-hud .actions .skip {
+          background: rgba(232, 90, 90, 0.10);
+          border-color: #e85a5a; color: #ffd0d0;
+        }
+        #battle-hud .actions .retry {
+          background: rgba(255, 185, 73, 0.12);
+          border-color: #ffb949; color: #ffe9c0;
+        }
       </style>
       <div class="panel player">
         <div class="team-list" data-bind="team-list"></div>
@@ -143,9 +181,30 @@ class BattleHud {
         <div class="num" data-bind="hype-text">0 / 100</div>
       </div>
       <div class="panel prompt" data-bind="prompt">--</div>
+      <div class="actions" data-bind="actions">
+        <button data-action="strum"   data-key="KeyZ"><span class="key">Z</span>Strum</button>
+        <button data-action="perform" data-key="KeyX"><span class="key">X</span>Perform</button>
+        <button data-action="band"    data-key="KeyV"><span class="key">V</span>Band</button>
+        <button data-action="defend"  data-key="KeyC"><span class="key">C</span>Defend</button>
+        <button data-action="items"   data-key="KeyI"><span class="key">I</span>Items</button>
+        <button data-action="recruit" class="recruit" data-key="KeyY" style="display:none;"><span class="key">Y</span>Recruit</button>
+        <button data-action="skip"    class="skip" data-key="KeyN" style="display:none;"><span class="key">N</span>Skip</button>
+        <button data-action="retry"   class="retry" data-key="KeyZ" style="display:none;"><span class="key">Z</span>Retry</button>
+        <button data-action="exit"    data-key="Escape" style="display:none;"><span class="key">Esc</span>Exit</button>
+      </div>
     `;
     document.body.appendChild(root);
     this.#root = root;
+
+    // Pointer/touch bindings — each button just emits the same
+    // input.keyDown event the keyboard handler would. battleScene
+    // decides per-phase which actions are valid; the buttons stay
+    // visible as a discoverable cheat-sheet.
+    const buttons = root.querySelectorAll('.actions button[data-key]');
+    buttons.forEach((b) => {
+      const code = b.getAttribute('data-key');
+      if (code) this.#buttonUnbinds.push(bindAsKey(/** @type {HTMLElement} */ (b), code));
+    });
 
     this.#unsubs.push(
       eventBus.on(
@@ -199,13 +258,49 @@ class BattleHud {
         'battle.promptChanged',
         /** @param {{ text: string }} p */
         (p) => this.#setText('prompt', p.text)
+      ),
+      eventBus.on(
+        'battle.gameOver',
+        /** @param {{ outcome: 'victory'|'defeat', canRecruit?: boolean, canRetry?: boolean }} p */
+        (p) => this.#showGameOverActions(p)
       )
     );
+  }
+
+  /**
+   * Battle ended — flip which actions the player has. Action buttons
+   * are hidden during play to avoid suggesting Recruit/Skip/Retry are
+   * options mid-fight. After the gameOver event fires they appear
+   * filtered to the actual outcome (victory + canRecruit, victory
+   * only, or defeat retry).
+   *
+   * @param {{ outcome: 'victory'|'defeat', canRecruit?: boolean, canRetry?: boolean }} payload
+   */
+  #showGameOverActions(payload) {
+    if (!this.#root) return;
+    /** @type {Record<string, boolean>} */
+    const visible = {
+      // Mid-battle actions hide once the fight ends so the prompt
+      // bar reads as the only call-to-action.
+      strum: false, perform: false, band: false, defend: false, items: false,
+      recruit: payload.outcome === 'victory' && !!payload.canRecruit,
+      skip:    payload.outcome === 'victory' && !!payload.canRecruit,
+      retry:   payload.outcome === 'defeat' && payload.canRetry !== false,
+      exit:    true,
+    };
+    for (const [action, show] of Object.entries(visible)) {
+      const btn = /** @type {HTMLElement | null} */ (
+        this.#root.querySelector(`button[data-action="${action}"]`)
+      );
+      if (btn) btn.style.display = show ? '' : 'none';
+    }
   }
 
   hide() {
     for (const u of this.#unsubs) u();
     this.#unsubs = [];
+    for (const u of this.#buttonUnbinds) u();
+    this.#buttonUnbinds = [];
     this.#root?.remove();
     this.#root = null;
   }
