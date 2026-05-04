@@ -1,5 +1,7 @@
 // @ts-check
 
+import { bindAsClick } from '../util/pointer.js';
+
 /**
  * Song picker — DOM overlay listing the player's available songs with
  * energy cost, scaling stat, and power. Mirrors itemMenu in shape so
@@ -28,6 +30,9 @@ class SongMenu {
    * @type {SongEntry[]}
    */
   #entries = [];
+
+  /** @type {(() => void)[]} */
+  #unbinds = [];
 
   /**
    * @param {SongEntry[]} entries
@@ -68,6 +73,24 @@ class SongMenu {
           display: flex; align-items: baseline; gap: 10px; padding: 5px 0;
         }
         #song-menu .row.locked { opacity: 0.4; }
+        #song-menu .row.tappable {
+          cursor: pointer; border-radius: 4px;
+          padding: 5px 6px; margin: 0 -6px;
+          touch-action: manipulation;
+          -webkit-tap-highlight-color: transparent;
+        }
+        #song-menu .row.tappable:hover, #song-menu .row.tappable:active {
+          background: rgba(255, 216, 132, 0.10);
+        }
+        #song-menu .close-btn {
+          margin-top: 12px; padding: 6px 14px;
+          background: rgba(255, 216, 132, 0.10);
+          border: 1px solid #ffd884; border-radius: 4px;
+          color: #e8edf2; font-family: inherit; font-size: 12px;
+          letter-spacing: 1px; cursor: pointer;
+          touch-action: manipulation;
+          -webkit-tap-highlight-color: transparent;
+        }
         #song-menu .key {
           flex: 0 0 22px; color: #ffd884; font-weight: 800;
         }
@@ -98,7 +121,7 @@ class SongMenu {
         ${entries
           .map(
             (e, i) => /* html */ `
-            <div class="row ${e.affordable ? '' : 'locked'}">
+            <div class="row ${e.affordable ? 'tappable' : 'locked'}" data-id="${e.id}">
               <span class="key">${i + 1}</span>
               <span class="name">${e.name}</span>
               <span class="stat">${e.scalesOff}</span>
@@ -112,12 +135,39 @@ class SongMenu {
         <kbd>1</kbd>–<kbd>${Math.max(1, entries.length)}</kbd> select &nbsp;·&nbsp;
         <kbd>Z</kbd> / <kbd>Esc</kbd> cancel
       </div>
+      <button class="close-btn" data-bind="cancel">Cancel</button>
     `;
     document.body.appendChild(root);
     this.#root = root;
+
+    root.querySelectorAll('.row.tappable').forEach((rowEl) => {
+      const id = rowEl.getAttribute('data-id');
+      if (!id) return;
+      this.#unbinds.push(
+        bindAsClick(/** @type {HTMLElement} */ (rowEl), () => {
+          const cb = this.#onSelect;
+          this.hide();
+          cb?.(id);
+        })
+      );
+    });
+    const cancelBtn = /** @type {HTMLElement | null} */ (
+      root.querySelector('[data-bind="cancel"]')
+    );
+    if (cancelBtn) {
+      this.#unbinds.push(
+        bindAsClick(cancelBtn, () => {
+          const cb = this.#onCancel;
+          this.hide();
+          cb?.();
+        })
+      );
+    }
   }
 
   hide() {
+    for (const u of this.#unbinds) u();
+    this.#unbinds = [];
     this.#root?.remove();
     this.#root = null;
     this.#entries = [];

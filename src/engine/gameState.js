@@ -4,6 +4,13 @@ import { eventBus } from './eventBus.js';
 import { getConfig } from './configService.js';
 
 /**
+ * Hard cap on roster size. Capturing a 21st rival is rejected at the
+ * reducer; the player has to release someone first. Tuned for screen
+ * readability (the roster grid scrolls but stays browsable).
+ */
+export const ROSTER_MAX = 20;
+
+/**
  * @typedef {object} ManagerStyle
  * @property {string} id
  * @property {string} name
@@ -234,10 +241,19 @@ function reduce(state, action) {
     case 'RECRUIT_RIVAL': {
       /** @type {{ templateId: string, name: string, role: string, rarity: string, rank: number }} */
       const { templateId, name, role, rarity, rank } = action;
-      // Skip duplicates so capturing Riff Lord twice doesn't clutter
-      // the roster. Future: spawn a numbered alt instead.
-      if (state.capturedRivals.includes(templateId)) return state;
-      const id = templateId;
+      // Cap on roster size, not on duplicate templates — capturing
+      // a second Riff Lord is fine, but we won't grow past ROSTER_MAX.
+      if (Object.keys(state.roster).length >= ROSTER_MAX) return state;
+      // Mint a unique id. The first capture of a template uses the
+      // bare templateId; subsequent ones get suffixed (`riffLord-2`,
+      // `riffLord-3`, ...). Released slots are reused.
+      const taken = new Set(Object.keys(state.roster));
+      let n = 1;
+      let id = templateId;
+      while (taken.has(id)) {
+        n += 1;
+        id = `${templateId}-${n}`;
+      }
       /** @type {RosterMember} */
       const member = {
         id,
@@ -249,11 +265,30 @@ function reduce(state, action) {
         exp: 0,
         capturedAt: new Date().toISOString(),
       };
+      // capturedRivals still tracks templates ever captured (for
+      // first-capture flags / future achievements); duplicates don't
+      // re-add.
+      const captured = state.capturedRivals.includes(templateId)
+        ? state.capturedRivals
+        : [...state.capturedRivals, templateId];
       return {
         ...state,
         roster: { ...state.roster, [id]: member },
-        capturedRivals: [...state.capturedRivals, templateId],
+        capturedRivals: captured,
       };
+    }
+    case 'RELEASE_RIVAL': {
+      const { id } = action;
+      if (!state.roster[id]) return state;
+      // Refuse if releasing would leave the team empty — same rule
+      // the UI enforces for REMOVE_FROM_TEAM.
+      const onTeam = state.team.includes(id);
+      if (onTeam && state.team.length === 1) return state;
+      const nextTeam = state.team.filter((tid) => tid !== id);
+      /** @type {Record<string, RosterMember>} */
+      const nextRoster = { ...state.roster };
+      delete nextRoster[id];
+      return { ...state, roster: nextRoster, team: nextTeam };
     }
     case 'LEVEL_UP_RIVAL': {
       const { id, ranks } = action;

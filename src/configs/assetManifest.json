@@ -1,6 +1,10 @@
 {
   "sprites": {
-    "characters": {}
+    "characters": {
+      "riffLord":  "/assets/sprites/characters/riffLord/default.png",
+      "beatSmith": "/assets/sprites/characters/beatSmith/default.png",
+      "echoSiren": "/assets/sprites/characters/echoSiren/default.png"
+    }
   },
   "tilemaps": {},
   "audio": {}

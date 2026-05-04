@@ -28,6 +28,7 @@ if (!mount) {
 const mainCfg = getConfig('main');
 const rng = new RNG(mainCfg.rngSeed ?? 1);
 audioManager.setMasterVolume(mainCfg.audio?.masterVolume ?? 0.8);
+ audioManager.register('neonRiff', { src: '/assets/audio/songs/neonRiff.mp3' });
 
 // Asset manifest — register before any scene constructs entities so
 // the first Character built can already see its sprite registration.

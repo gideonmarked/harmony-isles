@@ -1,0 +1,76 @@
+{
+  "character": {
+    "id": "e0ee8beb-44d3-4b0c-a19a-50335c90e76f",
+    "name": "male bassist",
+    "prompt": "male bassist",
+    "size": {
+      "width": 124,
+      "height": 124
+    },
+    "template_id": "mannequin",
+    "directions": 8,
+    "view": "low top-down",
+    "created_at": "2026-04-30T06:30:52.683364+00:00"
+  },
+  "frames": {
+    "rotations": {
+      "south": "rotations/south.png",
+      "south-east": "rotations/south-east.png",
+      "east": "rotations/east.png",
+      "north-east": "rotations/north-east.png",
+      "north": "rotations/north.png",
+      "north-west": "rotations/north-west.png",
+      "west": "rotations/west.png",
+      "south-west": "rotations/south-west.png"
+    },
+    "animations": {
+      "Fight_Stance_Idle-33f165a9": {
+        "south-east": [
+          "animations/Fight_Stance_Idle-33f165a9/south-east/frame_000.png",
+          "animations/Fight_Stance_Idle-33f165a9/south-east/frame_001.png",
+          "animations/Fight_Stance_Idle-33f165a9/south-east/frame_002.png",
+          "animations/Fight_Stance_Idle-33f165a9/south-east/frame_003.png",
+          "animations/Fight_Stance_Idle-33f165a9/south-east/frame_004.png",
+          "animations/Fight_Stance_Idle-33f165a9/south-east/frame_005.png",
+          "animations/Fight_Stance_Idle-33f165a9/south-east/frame_006.png",
+          "animations/Fight_Stance_Idle-33f165a9/south-east/frame_007.png"
+        ]
+      },
+      "right_arm_raised-8fd1448c": {
+        "south-east": [
+          "animations/right_arm_raised-8fd1448c/south-east/frame_000.png",
+          "animations/right_arm_raised-8fd1448c/south-east/frame_001.png",
+          "animations/right_arm_raised-8fd1448c/south-east/frame_002.png",
+          "animations/right_arm_raised-8fd1448c/south-east/frame_003.png"
+        ]
+      },
+      "one_powerful_slap-37cd4fa4": {
+        "south-east": [
+          "animations/one_powerful_slap-37cd4fa4/south-east/frame_000.png",
+          "animations/one_powerful_slap-37cd4fa4/south-east/frame_001.png",
+          "animations/one_powerful_slap-37cd4fa4/south-east/frame_002.png",
+          "animations/one_powerful_slap-37cd4fa4/south-east/frame_003.png",
+          "animations/one_powerful_slap-37cd4fa4/south-east/frame_004.png",
+          "animations/one_powerful_slap-37cd4fa4/south-east/frame_005.png",
+          "animations/one_powerful_slap-37cd4fa4/south-east/frame_006.png",
+          "animations/one_powerful_slap-37cd4fa4/south-east/frame_007.png"
+        ]
+      },
+      "performing_slapping_bass_guitar_with_fiery_aura-1cb74afc": {
+        "south-east": [
+          "animations/performing_slapping_bass_guitar_with_fiery_aura-1cb74afc/south-east/frame_000.png",
+          "animations/performing_slapping_bass_guitar_with_fiery_aura-1cb74afc/south-east/frame_001.png",
+          "animations/performing_slapping_bass_guitar_with_fiery_aura-1cb74afc/south-east/frame_002.png",
+          "animations/performing_slapping_bass_guitar_with_fiery_aura-1cb74afc/south-east/frame_003.png",
+          "animations/performing_slapping_bass_guitar_with_fiery_aura-1cb74afc/south-east/frame_004.png",
+          "animations/performing_slapping_bass_guitar_with_fiery_aura-1cb74afc/south-east/frame_005.png",
+          "animations/performing_slapping_bass_guitar_with_fiery_aura-1cb74afc/south-east/frame_006.png",
+          "animations/performing_slapping_bass_guitar_with_fiery_aura-1cb74afc/south-east/frame_007.png",
+          "animations/performing_slapping_bass_guitar_with_fiery_aura-1cb74afc/south-east/frame_008.png"
+        ]
+      }
+    }
+  },
+  "export_version": "2.0",
+  "export_date": "2026-05-01T12:17:45.544245"
+}

@@ -1,12 +1,19 @@
 {
   "tiles": {
-    "wall": { "walkable": false, "encounterMult": 0 },
-    "grass": { "walkable": true, "encounterMult": 1.0 },
-    "floor_indoor": { "walkable": true, "encounterMult": 1.0 },
-    "stage": { "walkable": true, "encounterMult": 1.2 },
-    "path": { "walkable": true, "encounterMult": 0 },
-    "bridge": { "walkable": true, "encounterMult": 0 },
-    "water": { "walkable": false, "encounterMult": 0 }
+    "wall":         { "walkable": false, "encounterMult": 0 },
+    "grass":        { "walkable": true,  "encounterMult": 1.0 },
+    "floor_indoor": { "walkable": true,  "encounterMult": 1.0 },
+    "stage":        { "walkable": true,  "encounterMult": 1.2 },
+    "path":         { "walkable": true,  "encounterMult": 0 },
+    "bridge":       { "walkable": true,  "encounterMult": 0 },
+    "water":        { "walkable": false, "encounterMult": 0 },
+    "dirt":         { "walkable": true,  "encounterMult": 1.0 },
+    "roof":         { "walkable": true,  "encounterMult": 1.0 },
+    "street":       { "walkable": true,  "encounterMult": 1.0 },
+    "stone":        { "walkable": true,  "encounterMult": 1.0 },
+    "crystal":      { "walkable": true,  "encounterMult": 1.0 },
+    "light":        { "walkable": true,  "encounterMult": 1.0 },
+    "void":         { "walkable": true,  "encounterMult": 1.0 }
   },
   "rolls": {
     "baseChance": 0.05,
@@ -32,6 +39,16 @@
       "rarityWeights": { "common": 40, "rare": 40, "epic": 17, "legendary": 3 },
       "rolePool": ["guitarist", "bassist", "drummer", "keyboardist", "singer"],
       "rankRange": [10, 18]
+    },
+    "epicArtists": {
+      "rarityWeights": { "common": 20, "rare": 35, "epic": 35, "legendary": 10 },
+      "rolePool": ["guitarist", "bassist", "drummer", "keyboardist", "singer"],
+      "rankRange": [19, 28]
+    },
+    "legendaryArtists": {
+      "rarityWeights": { "common": 5, "rare": 25, "epic": 40, "legendary": 30 },
+      "rolePool": ["guitarist", "bassist", "drummer", "keyboardist", "singer"],
+      "rankRange": [29, 40]
     }
   }
 }

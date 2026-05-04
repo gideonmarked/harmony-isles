@@ -1,0 +1,95 @@
+{
+  "character": {
+    "id": "8ca0567d-71b5-4d4e-97dd-94c47d5eeb2b",
+    "name": "guitar rock artist",
+    "prompt": "guitar rock artist",
+    "size": {
+      "width": 124,
+      "height": 124
+    },
+    "template_id": "mannequin",
+    "directions": 8,
+    "view": "low top-down",
+    "created_at": "2026-04-30T02:36:46.743027+00:00"
+  },
+  "frames": {
+    "rotations": {
+      "south": "rotations/south.png",
+      "south-east": "rotations/south-east.png",
+      "east": "rotations/east.png",
+      "north-east": "rotations/north-east.png",
+      "north": "rotations/north.png",
+      "north-west": "rotations/north-west.png",
+      "west": "rotations/west.png",
+      "south-west": "rotations/south-west.png"
+    },
+    "animations": {
+      "Fight_Stance_Idle-18f249f8": {
+        "south-east": [
+          "animations/Fight_Stance_Idle-18f249f8/south-east/frame_000.png",
+          "animations/Fight_Stance_Idle-18f249f8/south-east/frame_001.png",
+          "animations/Fight_Stance_Idle-18f249f8/south-east/frame_002.png",
+          "animations/Fight_Stance_Idle-18f249f8/south-east/frame_003.png",
+          "animations/Fight_Stance_Idle-18f249f8/south-east/frame_004.png",
+          "animations/Fight_Stance_Idle-18f249f8/south-east/frame_005.png",
+          "animations/Fight_Stance_Idle-18f249f8/south-east/frame_006.png",
+          "animations/Fight_Stance_Idle-18f249f8/south-east/frame_007.png"
+        ]
+      },
+      "animation-23d80ee2": {
+        "south-east": [
+          "animations/animation-23d80ee2/south-east/frame_000.png",
+          "animations/animation-23d80ee2/south-east/frame_001.png",
+          "animations/animation-23d80ee2/south-east/frame_002.png",
+          "animations/animation-23d80ee2/south-east/frame_003.png",
+          "animations/animation-23d80ee2/south-east/frame_004.png",
+          "animations/animation-23d80ee2/south-east/frame_005.png",
+          "animations/animation-23d80ee2/south-east/frame_006.png",
+          "animations/animation-23d80ee2/south-east/frame_007.png",
+          "animations/animation-23d80ee2/south-east/frame_008.png"
+        ]
+      },
+      "doing_one_powerful_strum-cec14ced": {
+        "south-east": [
+          "animations/doing_one_powerful_strum-cec14ced/south-east/frame_000.png",
+          "animations/doing_one_powerful_strum-cec14ced/south-east/frame_001.png",
+          "animations/doing_one_powerful_strum-cec14ced/south-east/frame_002.png",
+          "animations/doing_one_powerful_strum-cec14ced/south-east/frame_003.png",
+          "animations/doing_one_powerful_strum-cec14ced/south-east/frame_004.png",
+          "animations/doing_one_powerful_strum-cec14ced/south-east/frame_005.png",
+          "animations/doing_one_powerful_strum-cec14ced/south-east/frame_006.png",
+          "animations/doing_one_powerful_strum-cec14ced/south-east/frame_007.png",
+          "animations/doing_one_powerful_strum-cec14ced/south-east/frame_008.png"
+        ]
+      },
+      "strumming_the_guitar_passionately_with_lightning_a-4daac191": {
+        "south-east": [
+          "animations/strumming_the_guitar_passionately_with_lightning_a-4daac191/south-east/frame_000.png",
+          "animations/strumming_the_guitar_passionately_with_lightning_a-4daac191/south-east/frame_001.png",
+          "animations/strumming_the_guitar_passionately_with_lightning_a-4daac191/south-east/frame_002.png",
+          "animations/strumming_the_guitar_passionately_with_lightning_a-4daac191/south-east/frame_003.png",
+          "animations/strumming_the_guitar_passionately_with_lightning_a-4daac191/south-east/frame_004.png",
+          "animations/strumming_the_guitar_passionately_with_lightning_a-4daac191/south-east/frame_005.png",
+          "animations/strumming_the_guitar_passionately_with_lightning_a-4daac191/south-east/frame_006.png",
+          "animations/strumming_the_guitar_passionately_with_lightning_a-4daac191/south-east/frame_007.png",
+          "animations/strumming_the_guitar_passionately_with_lightning_a-4daac191/south-east/frame_008.png"
+        ]
+      },
+      "right_arm_raised_preparing_to-4c1c4b0e": {
+        "south-east": [
+          "animations/right_arm_raised_preparing_to-4c1c4b0e/south-east/frame_000.png",
+          "animations/right_arm_raised_preparing_to-4c1c4b0e/south-east/frame_001.png",
+          "animations/right_arm_raised_preparing_to-4c1c4b0e/south-east/frame_002.png",
+          "animations/right_arm_raised_preparing_to-4c1c4b0e/south-east/frame_003.png",
+          "animations/right_arm_raised_preparing_to-4c1c4b0e/south-east/frame_004.png",
+          "animations/right_arm_raised_preparing_to-4c1c4b0e/south-east/frame_005.png",
+          "animations/right_arm_raised_preparing_to-4c1c4b0e/south-east/frame_006.png",
+          "animations/right_arm_raised_preparing_to-4c1c4b0e/south-east/frame_007.png",
+          "animations/right_arm_raised_preparing_to-4c1c4b0e/south-east/frame_008.png"
+        ]
+      }
+    }
+  },
+  "export_version": "2.0",
+  "export_date": "2026-05-01T11:58:20.097161"
+}
