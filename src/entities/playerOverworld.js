@@ -38,10 +38,13 @@ import { inputManager } from '../engine/inputManager.js';
 
 const STEP_DURATION_S = 0.18; // ~5.5 tiles/sec — snappier than the doc's 4 tiles/sec, still readable
 
-/** Sprite display size in world units (square; PNGs are 120×120). */
-const SPRITE_SIZE = 1.2;
-/** Y offset that puts the sprite's bottom edge on the tile floor. */
-const SPRITE_GROUND_OFFSET = SPRITE_SIZE / 2;
+/**
+ * Sprite display size in world units. Tiles are 64 px on screen
+ * (renderer's TILE_PIXEL_SIZE), so 1.5 world units = 96 px tall —
+ * the manager pokes ~half a tile above the cell they're standing on.
+ * Width is square so the silhouette doesn't squash on diagonal art.
+ */
+const SPRITE_SIZE = 1.5;
 
 /** Per-state framerate for sprite frames. */
 const ANIM_FPS = { breathing: 4, walking: 10 };
@@ -136,13 +139,19 @@ export class PlayerOverworld {
     this.animTime = 0;
 
     // Sprite mesh — always camera-facing, no shear under the
-    // top-down camera the explore scene uses.
+    // top-down camera the explore scene uses. Anchor the sprite at
+    // its bottom-center (default is mid-mid) so the world position
+    // we set is the manager's *feet*, not their belly. The sprite
+    // then extends "up" from there — toward the top of the screen
+    // in top-down view — so the head pokes into the cell above
+    // without overlapping the cell to the south.
     const material = new THREE.SpriteMaterial({
       color: 0xffffff,
       transparent: true,
     });
     this.mesh = new THREE.Sprite(material);
     this.mesh.scale.set(SPRITE_SIZE, SPRITE_SIZE, 1);
+    this.mesh.center.set(0.5, 0);
 
     this.#frames = loadManagerFrames();
     // Prime the material map immediately so the first frame shows
@@ -282,13 +291,16 @@ export class PlayerOverworld {
   }
 
   #snapMeshToTile() {
-    const w = this.island.tileToWorld(this.tileX, this.tileY, SPRITE_GROUND_OFFSET);
+    // y=0.05 keeps the sprite a hair above the floor plane so it
+    // wins z-fighting under the top-down camera. The bottom-anchored
+    // sprite then plants its feet at the tile center on screen.
+    const w = this.island.tileToWorld(this.tileX, this.tileY, 0.05);
     this.mesh.position.set(w.x, w.y, w.z);
   }
 
   #updateMeshPosition() {
-    const a = this.island.tileToWorld(this.prevTileX, this.prevTileY, SPRITE_GROUND_OFFSET);
-    const b = this.island.tileToWorld(this.tileX, this.tileY, SPRITE_GROUND_OFFSET);
+    const a = this.island.tileToWorld(this.prevTileX, this.prevTileY, 0.05);
+    const b = this.island.tileToWorld(this.tileX, this.tileY, 0.05);
     const t = this.stepProgress;
     this.mesh.position.set(
       a.x + (b.x - a.x) * t,

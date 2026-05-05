@@ -4,7 +4,6 @@ import * as THREE from 'three';
 
 import { eventBus } from '../engine/eventBus.js';
 import { sceneManager } from '../engine/sceneManager.js';
-import { getConfig } from '../engine/configService.js';
 import { getState, dispatch } from '../engine/gameState.js';
 import { setCameraTopDown, setCameraIso } from '../engine/renderer.js';
 import { Island } from '../world/island.js';
@@ -13,6 +12,7 @@ import { encounterSystem } from '../systems/encounterSystem.js';
 import { exploreHud } from '../ui/exploreHud.js';
 import { shopUI } from '../ui/shopUI.js';
 import { RNG } from '../util/rng.js';
+import { playBgm } from '../engine/audio.js';
 
 /**
  * Explore scene — Final-Fantasy-style overworld walking with random
@@ -88,9 +88,14 @@ export const exploreScene = (() => {
     if (isHandingOff) return;
     isHandingOff = true;
 
-    // Roll rarity from the table's weights. The telegraph color
-    // matches what the player will face in the battle.
-    const weights = payload.table?.rarityWeights ?? { common: 100 };
+    // Roll rarity. The island can override its table's defaults via
+    // `rarityWeights` in islands.json — handy for tuning specific
+    // islands harder/easier without forking the shared table.
+    // Precedence: island override → table default → common-only fallback.
+    const weights =
+      island?.def?.rarityWeights ??
+      payload.table?.rarityWeights ??
+      { common: 100 };
     const rarity = /** @type {'common' | 'rare' | 'epic' | 'legendary'} */ (
       rng?.weighted(weights) ?? 'common'
     );
@@ -127,6 +132,11 @@ export const exploreScene = (() => {
       // and title scenes restore the iso pose on their own enter.
       setCameraTopDown();
 
+      // Overworld BGM. If the file (`/assets/audio/bgm/symphonyIsles.mp3`)
+      // is missing, the audio system silently no-ops — the rest of the
+      // scene still runs.
+      playBgm('symphonyIsles', { volume: 0.7, fadeInMs: 800 });
+
       group = new THREE.Group();
 
       // Whatever island the world map sent us to. Fall back to the
@@ -141,12 +151,13 @@ export const exploreScene = (() => {
 
       ctx.scene.add(group);
 
-      // Seeded RNG for deterministic encounter rolls. Re-seeded each
-      // entry so post-battle re-entries don't share state with the
-      // pre-battle session — design doc §4.3 promotes the RNG state
-      // to the save once that lands.
-      const main = /** @type {{ rngSeed?: number }} */ (getConfig('main'));
-      rng = new RNG((main.rngSeed ?? 1) + Math.floor(performance.now()));
+      // Re-seeded each entry so post-battle re-entries don't share
+      // state with the pre-battle session. Math.random() gives us 53
+      // bits of browser entropy — much better than `performance.now()`,
+      // whose adjacent-millisecond seed values made mulberry32's first
+      // call cluster into the same rarity bucket (legendary three
+      // battles in a row was symptom).
+      rng = new RNG((Math.random() * 0x7fffffff) >>> 0);
 
       encounterSystem.reset();
       // The battle just ended and we're back exploring? Cooldown so
@@ -224,6 +235,18 @@ export const exploreScene = (() => {
     update(dt) {
       if (isHandingOff || shopOpen) return;
       player?.update(dt);
+      // Camera-follow via parent-group offset: the camera stays
+      // anchored at world origin, and we slide the entire explore
+      // group (island + player) so the player's world position lands
+      // back on origin. Net effect — manager pinned at screen center,
+      // island scrolls past as they walk. Lerping happens for free
+      // because the player's mesh.position is already interpolating
+      // between tiles inside player.update(dt).
+      if (player && group) {
+        const p = player.mesh.position;
+        group.position.x = -p.x;
+        group.position.z = -p.z;
+      }
     },
 
     exit() {

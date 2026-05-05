@@ -2,9 +2,10 @@
 
 import { eventBus } from '../engine/eventBus.js';
 import { getState, dispatch, expToNextRank } from '../engine/gameState.js';
-import { computeMemberStats } from '../util/characterStats.js';
 import { bindAsClick, bindAsKey } from '../util/pointer.js';
 import { ROSTER_MAX } from '../engine/gameState.js';
+import { toggleTeamMembership } from '../util/teamOps.js';
+import { characterDetailUI } from './characterDetailUI.js';
 
 /**
  * Roster UI — view captures + manage team membership.
@@ -87,6 +88,7 @@ class RosterUI {
       this.#releaseArmTimer = null;
     }
     this.#armedReleaseId = null;
+    if (characterDetailUI.isOpen) characterDetailUI.hide();
     this.#root?.remove();
     this.#root = null;
     this.#onClose = null;
@@ -95,6 +97,12 @@ class RosterUI {
   /** @param {{ code: string }} payload */
   #onKey(payload) {
     if (!this.#root || !payload) return;
+    // Detail popup eats keys while open so Esc closes it instead of
+    // the whole roster.
+    if (characterDetailUI.isOpen) {
+      characterDetailUI.handleKey(payload.code);
+      return;
+    }
     switch (payload.code) {
       case 'ArrowUp':
       case 'KeyW':
@@ -142,34 +150,8 @@ class RosterUI {
   #toggleTeam() {
     const id = this.#ids[this.#selected];
     if (!id) return;
-    const s = getState();
-    const member = s.roster[id];
-    if (!member) return;
-    if (s.team.includes(id)) {
-      if (s.team.length === 1) {
-        this.#flash(`Can't bench ${member.name} — your team would be empty.`);
-        return;
-      }
-      dispatch({ type: 'REMOVE_FROM_TEAM', id });
-      this.#flash(`${member.name} benched.`);
-    } else {
-      // Pre-validate role conflict so we can show a useful message.
-      const conflict = s.team
-        .map((tid) => s.roster[tid])
-        .find((m) => m && m.role === member.role);
-      if (conflict) {
-        this.#flash(
-          `Already have a ${member.role}: ${conflict.name}. Bench them first.`
-        );
-        return;
-      }
-      if (s.team.length >= 5) {
-        this.#flash('Team is full (max 5).');
-        return;
-      }
-      dispatch({ type: 'ADD_TO_TEAM', id });
-      this.#flash(`${member.name} added to team.`);
-    }
+    const result = toggleTeamMembership(id);
+    this.#flash(result.message);
   }
 
   /**
@@ -245,6 +227,21 @@ class RosterUI {
     }, 3000);
   }
 
+  /**
+   * Pop up the detailed stats panel for the given roster id. Tap on
+   * the backdrop or the close button dismisses; Esc routes through
+   * #onKey above.
+   *
+   * @param {string} id
+   */
+  #openDetail(id) {
+    const member = getState().roster[id];
+    if (!member) return;
+    characterDetailUI.show(member, () => {
+      this.#refresh();
+    });
+  }
+
   /** Cancel any in-flight release arming (selection change, hide). */
   #cancelArmedRelease() {
     if (this.#releaseArmTimer) {
@@ -313,10 +310,6 @@ class RosterUI {
         const teamBadge = inTeam
           ? `<span class="team-badge">TEAM ${s.team.indexOf(id) + 1}</span>`
           : '';
-        // Same scaling battleScene applies — what this member would
-        // walk onto the stage with right now.
-        const battle = computeMemberStats(m);
-        const st = battle.stats;
         return /* html */ `
           <div class="card ${idx === this.#selected ? 'active' : ''} ${inTeam ? 'in-team' : ''}" data-idx="${idx}">
             <div class="head">
@@ -328,15 +321,6 @@ class RosterUI {
               <span class="rarity rarity-${m.rarity}">${m.rarity}</span>
             </div>
             <div class="exp">EXP ${m.exp.toLocaleString()} / ${expCap.toLocaleString()}</div>
-            <div class="hpmp">HP ${battle.hpMax} &nbsp;&middot;&nbsp; Energy ${battle.mpMax}</div>
-            <div class="stats">
-              <span title="Technicality — widens Perfect window">T ${st.technicality}</span>
-              <span title="Focus — turn speed / dodge">F ${st.focus}</span>
-              <span title="Groove — physical perform damage">G ${st.groove}</span>
-              <span title="Confidence — defense / HP scaling">C ${st.confidence}</span>
-              <span title="Creativity — skill perform damage">Cr ${st.creativity}</span>
-              <span title="Energy — perform resource">E ${st.energy}</span>
-            </div>
             <div class="hint">${idx === this.#selected ? (inTeam ? 'T to bench · [ / ] reorder turn' : 'T to add to team') : ' '}</div>
           </div>`;
       })
@@ -351,13 +335,10 @@ class RosterUI {
       if (idx < 0) return;
       this.#cardUnbinds.push(
         bindAsClick(/** @type {HTMLElement} */ (cardEl), () => {
-          if (idx === this.#selected) {
-            this.#toggleTeam();
-          } else {
-            this.#cancelArmedRelease();
-            this.#selected = idx;
-            this.#refresh();
-          }
+          this.#cancelArmedRelease();
+          this.#selected = idx;
+          this.#refresh();
+          this.#openDetail(this.#ids[idx]);
         })
       );
     });
@@ -399,8 +380,21 @@ class RosterUI {
         #roster-overlay .list {
           margin-top: 18px;
           display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-          gap: 12px; padding: 0 24px;
+          gap: 12px; padding: 0 24px 4px;
           width: 100%; max-width: 920px;
+          /* Scroll the cards inside the overlay when there are more
+             than fit on screen — controls + actions row stays pinned
+             at the bottom regardless of roster size. */
+          flex: 1 1 auto;
+          overflow-y: auto;
+          align-content: start;
+        }
+        #roster-overlay .list::-webkit-scrollbar { width: 8px; }
+        #roster-overlay .list::-webkit-scrollbar-track {
+          background: rgba(255,255,255,0.02);
+        }
+        #roster-overlay .list::-webkit-scrollbar-thumb {
+          background: rgba(255,185,73,0.35); border-radius: 4px;
         }
         #roster-overlay .empty {
           padding: 18px; color: #8a96a4; font-size: 13px;

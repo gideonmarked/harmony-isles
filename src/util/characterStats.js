@@ -43,6 +43,7 @@ export const ROLE_BASE_STATS = {
 /** §7.2 rarity → flat damage / HP / stat multiplier. */
 export function rarityMultiplierFor(/** @type {string} */ rarity) {
   switch (rarity) {
+    case 'uncommon':  return 1.1;
     case 'rare':      return 1.2;
     case 'epic':      return 1.5;
     case 'legendary': return 2.0;
@@ -92,4 +93,24 @@ export function computeMemberStats(member) {
     (50 + (member.rank - 1) * 5) * rarityMult + stats.energy * 1.5
   );
   return { role, stats, hpMax, mpMax, rarityMult };
+}
+
+/**
+ * Resolve the *baseline* battle profile for a member — what their
+ * stats would be at common rarity (rarityMult = 1.0), same rank.
+ * Used by the detail popup to show how much rarity adds on top.
+ *
+ * @param {{ role: string, rank: number }} member
+ */
+export function computeBaseStats(member) {
+  const role = ROLE_BASE_STATS[member.role] ? member.role : 'guitarist';
+  const baseStats = ROLE_BASE_STATS[role];
+  const stats = scaleStats(baseStats, role, member.rank, 1.0);
+  const hpMax = Math.round(
+    (100 + (member.rank - 1) * 15) * 1.0 + stats.confidence * 2
+  );
+  const mpMax = Math.round(
+    (50 + (member.rank - 1) * 5) * 1.0 + stats.energy * 1.5
+  );
+  return { role, stats, hpMax, mpMax, rarityMult: 1.0 };
 }

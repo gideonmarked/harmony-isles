@@ -2,7 +2,13 @@
 
 import * as THREE from 'three';
 
-const VIEW_SIZE = 12;
+/**
+ * Pixels per world tile. The orthographic camera frustum is sized
+ * each frame so 1 world unit (= 1 tile) is exactly this many screen
+ * pixels regardless of window dimensions. Bumping it shrinks the
+ * visible map; lowering it widens it.
+ */
+const TILE_PIXEL_SIZE = 64;
 
 /**
  * Camera rest position. Mutable so scenes can switch between iso
@@ -56,15 +62,9 @@ export function createRenderer(mount) {
 
   const scene = new THREE.Scene();
 
-  const aspect = window.innerWidth / window.innerHeight;
-  const camera = new THREE.OrthographicCamera(
-    (-VIEW_SIZE * aspect) / 2,
-    (VIEW_SIZE * aspect) / 2,
-    VIEW_SIZE / 2,
-    -VIEW_SIZE / 2,
-    0.1,
-    1000
-  );
+  // Initial frustum is overwritten by resize() below; values here just
+  // need to be valid before the first resize fires.
+  const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 1000);
   activeCamera = camera;
   setCameraIso();
 
@@ -85,11 +85,14 @@ export function createRenderer(mount) {
   function resize() {
     const w = window.innerWidth;
     const h = window.innerHeight;
-    const a = w / h;
-    camera.left = (-VIEW_SIZE * a) / 2;
-    camera.right = (VIEW_SIZE * a) / 2;
-    camera.top = VIEW_SIZE / 2;
-    camera.bottom = -VIEW_SIZE / 2;
+    // Vertical frustum extent in world units = pixels / px-per-tile.
+    // 1 tile maps to TILE_PIXEL_SIZE pixels regardless of window size.
+    const viewH = h / TILE_PIXEL_SIZE;
+    const viewW = w / TILE_PIXEL_SIZE;
+    camera.left = -viewW / 2;
+    camera.right = viewW / 2;
+    camera.top = viewH / 2;
+    camera.bottom = -viewH / 2;
     camera.updateProjectionMatrix();
     renderer.setSize(w, h, false);
   }
