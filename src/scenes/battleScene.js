@@ -8,6 +8,15 @@ import { getConfig } from '../engine/configService.js';
 import { getState, dispatch, expToNextRank, ROSTER_MAX } from '../engine/gameState.js';
 import { saveSystem } from '../engine/saveSystem.js';
 import { startRhythm, LANE_KEYS } from '../engine/rhythmEngine.js';
+import {
+  playSong,
+  stopSong,
+  stopAllSongs,
+  playBgm,
+  stopBgm,
+  muteBgm,
+  unmuteBgm,
+} from '../engine/audio.js';
 import { freezeFor, shakeCamera, resetTimeFx } from '../engine/timeFx.js';
 import { Character, SPRITE_GROUND_OFFSET } from '../entities/character.js';
 import { battleHud } from '../ui/battleHud.js';
@@ -614,7 +623,7 @@ export const battleScene = (() => {
     const all = Object.values(roster);
     // Tier-aware fallback: try the exact rarity, then walk down to
     // common, then fall through to "any" if even common is empty.
-    const order = ['legendary', 'epic', 'rare', 'common'];
+    const order = ['legendary', 'epic', 'rare', 'uncommon', 'common'];
     const start = wantRarity ? order.indexOf(wantRarity) : -1;
     const chain = start >= 0 ? order.slice(start) : ['__any__'];
     for (const tier of chain) {
@@ -855,6 +864,15 @@ export const battleScene = (() => {
     });
     rhythmUI.flashReady(RHYTHM_LEAD_IN_MS);
 
+    // Audio kicks in *with* the GET READY banner — fade-in across
+    // the lead-in window so the song is at full volume by the time
+    // the first note reaches the hit zone. Missing assets are a
+    // silent no-op, so gameplay works whether or not the .mp3 is
+    // shipped. The battle BGM dips to silent for the duration of
+    // the round so the song sits cleanly on top.
+    muteBgm({ fadeMs: 400 });
+    playSong(songId, { fadeInMs: RHYTHM_LEAD_IN_MS });
+
     // Pin sprites to the perform loop for the duration of the song.
     // Band Performance recruits every alive team member so the whole
     // band animates together; a regular Perform is just the active
@@ -883,6 +901,11 @@ export const battleScene = (() => {
     rhythm.stop();
     rhythm = null;
     rhythmUI.hide();
+    // Fade the song out on the natural end of a round so the song
+    // doesn't truncate jarringly on the impact frame.
+    if (currentSong?.id) stopSong(currentSong.id, { fadeOutMs: 600 });
+    // Bring the battle BGM back as the song fades out.
+    unmuteBgm({ fadeMs: 600 });
     isBandPerformance = false;
     currentSong = null;
 
@@ -1055,6 +1078,13 @@ export const battleScene = (() => {
 
     enter(ctx) {
       group = new THREE.Group();
+
+      // Battle BGM at 50% — half-volume so the per-Perform song
+      // sits clearly on top when it plays. muteBgm/unmuteBgm dip
+      // this track during rhythm rounds so it's effectively only
+      // playing during action phases (intro, item menu, song menu,
+      // enemy turn, gameOver).
+      playBgm('jamClash', { volume: 0.5, fadeInMs: 500 });
 
       // Build the team from state. Each roster id in `state.team`
       // produces one Character; missing ids fall back to a
@@ -1246,6 +1276,9 @@ export const battleScene = (() => {
                 rhythm = null;
                 rhythmUI.hide();
               }
+              // Soft fade on Esc so the song tails out under the
+              // scene transition rather than cutting off abruptly.
+              stopAllSongs({ fadeOutMs: 400 });
               // Defeat → title (player may want to switch slots /
               // start over). Victory or mid-battle bail-out drops
               // back into the explore scene of whichever island the
@@ -1279,6 +1312,7 @@ export const battleScene = (() => {
                 rhythm = null;
                 rhythmUI.hide();
               }
+              stopAllSongs({ fadeOutMs: 400 });
               sceneManager.transition('explore');
               return;
             }
@@ -1375,6 +1409,13 @@ export const battleScene = (() => {
       unsubs = [];
       for (const t of timers) clearTimeout(t);
       timers = [];
+      // Fade rather than hard-stop so any audio still ramping under
+      // an Esc-press tails out cleanly across the scene transition.
+      // The BGM also gets a fade — explore.enter() will switch to
+      // harmonyIsles via playBgm, but if we're heading to title we
+      // need an explicit stop or the battle theme keeps looping.
+      stopAllSongs({ fadeOutMs: 400 });
+      stopBgm({ fadeOutMs: 400 });
 
       if (rhythm) {
         rhythm.stop();

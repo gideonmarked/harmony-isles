@@ -10,6 +10,7 @@ import { setCameraIso } from '../engine/renderer.js';
 import { rosterUI } from '../ui/rosterUI.js';
 import { itemMenu } from '../ui/itemMenu.js';
 import { bindAsClick, bindAsKey } from '../util/pointer.js';
+import { stopBgm } from '../engine/audio.js';
 
 /**
  * World Map scene — the player's "tour itinerary" view (design doc
@@ -301,6 +302,10 @@ export const worldMapScene = (() => {
     enter(ctx) {
       // Iso pose for the backdrop accent group looks better than top-down here.
       setCameraIso();
+
+      // World map is a menu — silence the explore/battle BGM that
+      // may still be looping from the previous scene.
+      stopBgm({ fadeOutMs: 400 });
 
       group = new THREE.Group();
       const accent = new THREE.Mesh(

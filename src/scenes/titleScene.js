@@ -8,6 +8,7 @@ import { getConfig } from '../engine/configService.js';
 import { dispatch } from '../engine/gameState.js';
 import { saveSystem, MAX_SLOTS } from '../engine/saveSystem.js';
 import { bindAsClick } from '../util/pointer.js';
+import { stopBgm } from '../engine/audio.js';
 
 /**
  * Title scene — two views in sequence:
@@ -393,6 +394,9 @@ export const titleScene = (() => {
     id: 'title',
 
     enter(ctx) {
+      // Menu screen — silence whichever BGM was looping in a prior
+      // scene. harmonyIsles is meant for the explore loop only.
+      stopBgm({ fadeOutMs: 400 });
       group = new THREE.Group();
       const accent = new THREE.Mesh(
         new THREE.BoxGeometry(2.4, 0.4, 0.4),

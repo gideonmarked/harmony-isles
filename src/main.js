@@ -12,6 +12,7 @@ import { createRenderer, CAMERA_BASE_POSITION } from './engine/renderer.js';
 import { isFrozen, applyShakeToCamera } from './engine/timeFx.js';
 import { assetLoader } from './engine/assetLoader.js';
 import { bboxDebug } from './engine/bboxDebug.js';
+import { audioControls } from './ui/audioControls.js';
 import { titleScene } from './scenes/titleScene.js';
 import { worldMapScene } from './scenes/worldMapScene.js';
 import { exploreScene } from './scenes/exploreScene.js';
@@ -71,6 +72,10 @@ sceneManager.register(worldMapScene);
 sceneManager.register(exploreScene);
 sceneManager.register(battleScene);
 sceneManager.transition('title');
+
+// Persistent audio controls — top-right corner, lives outside the
+// scene system so the buttons are always reachable.
+audioControls.show();
 
 window.addEventListener('resize', resize);
 
